@@ -7,6 +7,7 @@
 /*                                                                  */
 
 #include "icslab2_net.h"
+#include <time.h>
 
 int main(int argc, char **argv)
 {
@@ -18,12 +19,14 @@ int main(int argc, char **argv)
     struct sockaddr_in serverAddr;  /* サーバ＝相手用のアドレス構造体 */
     struct sockaddr_in clientAddr;  /* クライアント＝自分用のアドレス構造体 */
     socklen_t addrLen;                    /* serverAddrのサイズ */
-    char buf[BUF_LEN];              /* 受信バッファ */
+    char buf[BUF_LEN + 1];          /* 文字列終端用に1バイト確保 */
     int n;                          /* 読み込み／受信バイト数 */
 
     struct addrinfo hints, *res;    /* アドレス情報の構造体 */
     struct in_addr addr;            /* 表示作業用 */
     int err;
+    struct timespec start_time, end_time;
+    double rtt;
 
     /* コマンドライン引数の処理 */
     if(argc == 2 && strncmp(argv[1], "-h", 2) == 0) {
@@ -78,6 +81,12 @@ int main(int argc, char **argv)
 
         /* STEP 3xxx: サーバにデータグラムを送信する */
         addrLen = sizeof(serverAddr);
+        /* 送信直前の時刻を取得する */
+        if(clock_gettime(CLOCK_REALTIME, &start_time) < 0) {
+            perror("clock_gettime");
+            close(sock);
+            return 1;
+        }
         if(n != sendto(sock, buf, n, 0,
                     (struct sockaddr *)&serverAddr, addrLen)) {
             perror("sendto");
@@ -93,12 +102,22 @@ int main(int argc, char **argv)
             break;
         }
 
+        /* 受信直後の時刻を取得し、RTTを秒単位で計算する */
+        if(clock_gettime(CLOCK_REALTIME, &end_time) < 0) {
+            perror("clock_gettime");
+            close(sock);
+            return 1;
+        }
+        rtt = (double)(end_time.tv_sec - start_time.tv_sec)
+            + (double)(end_time.tv_nsec - start_time.tv_nsec) * 1e-9;
+
         /* 受信したデータとそのバイト数の表示 */
         buf[n] = '\0';
         printf("Recv %d bytes data: %s", n, buf);
         /* write(1, buf, n); をデータの表示に使用してもよい */
 
         printf("\n");
+        printf("RTT: %.3f ms\n", rtt * 1000.0);
 
         if(strncmp(buf, "quit", 4) == 0) {     /* "quit"なら停止 */
             break;
