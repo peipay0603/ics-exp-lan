@@ -51,7 +51,8 @@ int main(int argc, char **argv)
     serverAddr.sin_family = AF_INET;            /* Internetプロトコル */
     serverAddr.sin_port = htons(port);          /* サーバの待受ポート */
     /* IPアドレス（文字列）から変換 */
-    inet_pton(AF_INET, server_ipaddr_str, &serverAddr.sin_addr.s_addr);
+    serverAddr.sin_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
+    freeaddrinfo(res);
     
     /* 確認用：IPアドレスとポートを文字列に変換して表示 */
     addr.s_addr = serverAddr.sin_addr.s_addr;

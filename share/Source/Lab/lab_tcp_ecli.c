@@ -19,6 +19,8 @@ main(int argc, char** argv)
     int     n;                      /* 読み込み／受信バイト数 */
 
     struct in_addr addr;            /* アドレス表示用 */
+    struct addrinfo hints, *res;
+    int err;
 
     /* コマンドライン引数の処理 */
     if(argc == 2 && strncmp(argv[1], "-h", 2) == 0) {
@@ -35,7 +37,18 @@ main(int argc, char** argv)
     serverAddr.sin_family = AF_INET;                /* Internetプロトコル */
     serverAddr.sin_port = htons(port);              /* サーバの待受ポート */
     /* IPアドレス（文字列）から変換 */
-    inet_pton(AF_INET, server_ipaddr_str, &serverAddr.sin_addr.s_addr);
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    err = getaddrinfo(server_ipaddr_str, NULL, &hints, &res);
+    if (err != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(err));
+        return 1;
+    }
+
+    serverAddr.sin_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
+    freeaddrinfo(res);
 
     /* 確認用：IPアドレスを文字列に変換して表示 */
     addr.s_addr = serverAddr.sin_addr.s_addr;
