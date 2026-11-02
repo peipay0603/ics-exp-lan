@@ -32,9 +32,10 @@ int main(int argc, char **argv)
     }
     if(argc > 1)    /* 宛先を指定のIPアドレスにする。 portはデフォルト */
         server_ipaddr_str = argv[1];
-    if(argc > 2)    /* 宛先を指定のIPアドレス、portにする */
+    if(argc > 2){    /* 宛先を指定のIPアドレス、portにする */
         port_num_str = argv[2];
         port = (unsigned int)atoi(argv[2]);
+    }
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;          /* IPv4で通信 */
