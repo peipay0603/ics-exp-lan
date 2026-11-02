@@ -60,7 +60,10 @@ main(int argc, char** argv)
     while((n = read(0, buf, BUF_LEN)) > 0) {    /* 標準入力から読み込み */
 
         /* STEP 4x: サーバに送信 */
-        if(write(sock, buf, n) < 0);                    /* 読み込んだ内容を送信 */
+        if(write(sock, buf, n) < 0) {
+            perror("write");
+            break;
+        }                    /* 読み込んだ内容を送信 */
 
         /* STEP 5x: サーバからエコーを受信 */
         if((n = read(sock, buf , n) ) > 0) {

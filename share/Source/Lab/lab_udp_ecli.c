@@ -17,7 +17,7 @@ int main(int argc, char **argv)
     int sock;                       /* ソケットディスクリプタ */
     struct sockaddr_in serverAddr;  /* サーバ＝相手用のアドレス構造体 */
     struct sockaddr_in clientAddr;  /* クライアント＝自分用のアドレス構造体 */
-    int addrLen;                    /* serverAddrのサイズ */
+    socklen_t addrLen;                    /* serverAddrのサイズ */
     char buf[BUF_LEN];              /* 受信バッファ */
     int n;                          /* 読み込み／受信バイト数 */
 
@@ -33,8 +33,8 @@ int main(int argc, char **argv)
     if(argc > 1)    /* 宛先を指定のIPアドレスにする。 portはデフォルト */
         server_ipaddr_str = argv[1];
     if(argc > 2)    /* 宛先を指定のIPアドレス、portにする */
-        server_ipaddr_str = argv[1];
         port_num_str = argv[2];
+        port = (unsigned int)atoi(argv[2]);
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;          /* IPv4で通信 */
@@ -75,6 +75,7 @@ int main(int argc, char **argv)
         printf("Send %d bytes data: %s", n, buf);
 
         /* STEP 3xxx: サーバにデータグラムを送信する */
+        addrLen = sizeof(serverAddr);
         if(n != sendto(sock, buf, n, 0,
                     (struct sockaddr *)&serverAddr, addrLen)) {
             perror("sendto");
@@ -87,6 +88,7 @@ int main(int argc, char **argv)
                      (struct sockaddr *)&clientAddr, (socklen_t *)&addrLen);
         if(n < 0) {
             perror("recvfrom");
+            break;
         }
 
         /* 受信したデータとそのバイト数の表示 */
