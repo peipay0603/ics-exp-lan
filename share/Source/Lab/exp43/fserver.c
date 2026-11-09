@@ -1,138 +1,121 @@
-/* 実験4-3: TCPファイル送信。4-1のopen/read/writeの流れに計測を追加。 */
-#define _POSIX_C_SOURCE 200809L
-#include "common.h"
-
-static int transfer_file(int sock, const char *filename, char *buf, size_t chunk)
-{
-    char request[128], header[128];
-    struct stat info;
-    struct timespec start, end;
-    uint64_t bytes = 0, file_reads = 0, send_calls = 0;
-    int fd = -1;
-    int result = -1;
-
-    /* 要求内容は解析せず、起動時に指定されたファイルを送る。 */
-    if(read_line(sock, request, sizeof(request)) < 0) {
-        perror("read request");
-        return -1;
-    }
-    fd = open(filename, O_RDONLY);
-    if(fd < 0) {
-        perror("open input");
-        write_all(sock, "ERR\n", 4, NULL);
-        return -1;
-    }
-    if(fstat(fd, &info) < 0 || !S_ISREG(info.st_mode) || info.st_size < 0) {
-        fprintf(stderr, "input must be a regular file\n");
-        write_all(sock, "ERR\n", 4, NULL);
-        goto done;
-    }
-    if(clock_gettime(CLOCK_REALTIME, &start) < 0) {
-        perror("clock_gettime");
-        goto done;
-    }
-    /* サイズ通知はファイル本体とは分け、途中切断を検出できるようにする。 */
-    snprintf(header, sizeof(header), "OK %" PRIu64 "\n", (uint64_t)info.st_size);
-    if(write_all(sock, header, strlen(header), NULL) < 0) {
-        perror("write header");
-        goto done;
-    }
-    while(bytes < (uint64_t)info.st_size) {
-        uint64_t remaining = (uint64_t)info.st_size - bytes;
-        size_t length = remaining < chunk ? (size_t)remaining : chunk;
-        ssize_t n = read_retry(fd, buf, length);
-        if(n <= 0) {
-            if(n < 0)
-                perror("read input");
-            else
-                fprintf(stderr, "input ended before its announced size\n");
-            goto done;
-        }
-        ++file_reads;
-        if(write_all(sock, buf, (size_t)n, &send_calls) < 0) {
-            perror("write socket");
-            goto done;
-        }
-        bytes += (uint64_t)n;
-    }
-    if(clock_gettime(CLOCK_REALTIME, &end) < 0) {
-        perror("clock_gettime");
-        goto done;
-    }
-    printf("RESULT status=ok payload_bytes=%" PRIu64
-           " chunk_bytes=%zu file_reads=%" PRIu64 " send_calls=%" PRIu64
-           " server_seconds=%.9f\n",
-           bytes, chunk, file_reads, send_calls, elapsed_seconds(start, end));
-    fflush(stdout);
-    result = 0;
-done:
-    close(fd);
-    return result;
-}
+#include "icslab2_net.h"
 
 int main(int argc, char **argv)
 {
-    uint64_t port = TCP_SERVER_PORT, chunk = BUF_LEN, max_clients = 0;
-    uint64_t handled = 0;
-    struct sockaddr_in serverAddr;
-    socklen_t address_length = sizeof(serverAddr);
-    int sock0, yes = 1, failed = 0;
-    char *buf;
+    int sock0, sock, fd, n;
+    int yes = 1;
+    int port = TCP_SERVER_PORT;
+    struct sockaddr_in serverAddr, clientAddr;
+    socklen_t addrLen;
+    char buf[BUF_LEN];
+    char *filename;
 
-    if(argc < 2 || argc > 5 || strcmp(argv[1], "-h") == 0) {
-        fprintf(stderr, "Usage: %s input_file [port=10000] [chunk_bytes=%d] [max_clients=0]\n",
-                argv[0], BUF_LEN);
-        return argc == 2 && strcmp(argv[1], "-h") == 0 ? 0 : 1;
-    }
-    if((argc > 2 && parse_number(argv[2], 0, 65535, &port) < 0)
-       || (argc > 3 && parse_number(argv[3], 1, MAX_CHUNK, &chunk) < 0)
-       || (argc > 4 && parse_number(argv[4], 0, UINT64_MAX, &max_clients) < 0)) {
-        fprintf(stderr, "invalid port, chunk_bytes, or max_clients\n");
+    if(argc < 2 || argc > 3) {
+        fprintf(stderr, "Usage: %s filename [port]\n", argv[0]);
         return 1;
     }
-    signal(SIGPIPE, SIG_IGN);
-    buf = malloc((size_t)chunk);
-    if(buf == NULL) {
-        perror("malloc");
+    filename = argv[1];
+    if(argc > 2)
+        port = atoi(argv[2]);
+    if(port < 1 || port > 65535) {
+        fprintf(stderr, "invalid port\n");
         return 1;
     }
+
+    /* STEP 1: ソケットを作る */
     sock0 = socket(AF_INET, SOCK_STREAM, 0);
     if(sock0 < 0) {
         perror("socket");
-        free(buf);
         return 1;
     }
     setsockopt(sock0, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+
+    /* STEP 2: アドレスとポートを設定する */
     memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons((unsigned short)port);
+    serverAddr.sin_port = htons(port);
     serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    if(bind(sock0, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0
-       || listen(sock0, 5) < 0
-       || getsockname(sock0, (struct sockaddr *)&serverAddr, &address_length) < 0) {
-        perror("bind/listen/getsockname");
+
+    /* STEP 3: bindする */
+    if(bind(sock0, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
+        perror("bind");
         close(sock0);
-        free(buf);
         return 1;
     }
-    printf("LISTEN port=%u chunk_bytes=%" PRIu64 "\n", ntohs(serverAddr.sin_port), chunk);
-    fflush(stdout);
 
-    while(max_clients == 0 || handled < max_clients) {
-        int sock = accept(sock0, NULL, NULL);
-        if(sock < 0) {
-            if(errno == EINTR)
-                continue;
-            perror("accept");
-            failed = 1;
-            break;
-        }
-        if(transfer_file(sock, argv[1], buf, (size_t)chunk) < 0)
-            failed = 1;
-        close(sock);
-        ++handled;
+    /* STEP 4: 接続を待つ */
+    if(listen(sock0, 5) < 0) {
+        perror("listen");
+        close(sock0);
+        return 1;
     }
-    close(sock0);
-    free(buf);
-    return failed;
+
+    while(1) {
+        unsigned long long total_bytes = 0;
+        unsigned long send_count = 0;
+        unsigned long file_read_count = 0;
+
+        /* STEP 5: 接続を受け付ける */
+        printf("waiting connection... port=%d BUF_LEN=%d\n", port, BUF_LEN);
+        fflush(stdout);
+        addrLen = sizeof(clientAddr);
+        sock = accept(sock0, (struct sockaddr *)&clientAddr, &addrLen);
+        if(sock < 0) {
+            perror("accept");
+            close(sock0);
+            return 1;
+        }
+
+        /* STEP 6: ファイル要求を受信する */
+        n = read(sock, buf, BUF_LEN);
+        if(n <= 0) {
+            if(n < 0)
+                perror("read request");
+            close(sock);
+            continue;
+        }
+
+        /* STEP 7: 送信するファイルを開く */
+        fd = open(filename, O_RDONLY);
+        if(fd < 0) {
+            perror("open");
+            close(sock);
+            continue;
+        }
+
+        /* STEP 8: ファイルを読み、ソケットへ送る */
+        while((n = read(fd, buf, BUF_LEN)) > 0) {
+            int sent = 0;
+            file_read_count++;
+            while(sent < n) {
+                ssize_t count = write(sock, buf + sent, n - sent);
+                if(count <= 0) {
+                    if(count < 0)
+                        perror("write socket");
+                    close(fd);
+                    close(sock);
+                    close(sock0);
+                    return 1;
+                }
+                sent += (int)count;
+                send_count++;
+            }
+            total_bytes += (unsigned long long)n;
+        }
+        if(n < 0) {
+            perror("read file");
+            close(fd);
+            close(sock);
+            close(sock0);
+            return 1;
+        }
+
+        /* STEP 9: ファイルと通信用ソケットを閉じる */
+        close(fd);
+        close(sock);
+        printf("Send bytes: %llu\n", total_bytes);
+        printf("File read count: %lu\n", file_read_count);
+        printf("Send count: %lu\n", send_count);
+        fflush(stdout);
+    }
 }
