@@ -1,0 +1,4 @@
+/usr/local/bin/cmake -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_MAKE_PROGRAM=/Users/kosuke/Library/Application Support/JetBrains/Toolbox/apps/CLion/ch-0/213.5744.254/CLion.app/Contents/bin/ninja/mac/ninja" -G Ninja /Users/kosuke/dev/ics-exp-lan/share/day2
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /Users/kosuke/dev/ics-exp-lan/share/day2/cmake-build-debug
