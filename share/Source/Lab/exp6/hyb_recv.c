@@ -143,7 +143,7 @@ int main(int argc, char **argv)
     start_time.tv_sec = (time_t)(int64_t)be64toh((uint64_t)hello.start_sec);
     start_time.tv_nsec = (long)(int64_t)be64toh((uint64_t)hello.start_nsec);
     if(chunk < 1 || chunk > HYB_MAX_CHUNK
-       || (file_size + chunk - 1) / chunk != total_chunks) {
+       || file_size / chunk + (file_size % chunk != 0) != total_chunks) {
         fprintf(stderr, "bad hello parameters\n");
         return 1;
     }
@@ -245,7 +245,7 @@ int main(int argc, char **argv)
                     clock_gettime(CLOCK_REALTIME, &first_time);
                     have_first = 1;
                 }
-                if(pwrite(fd, buf + HYB_DGRAM_HDR, len, (off_t)seq * chunk) != (ssize_t)len) {
+                if(pwrite_all(fd, buf + HYB_DGRAM_HDR, len, (off_t)seq * chunk) < 0) {
                     perror("pwrite");
                     return 1;
                 }
@@ -279,8 +279,10 @@ int main(int argc, char **argv)
     clock_gettime(CLOCK_REALTIME, &end_time);
     if(!have_first)
         first_time = end_time;
-    if(send_msg(ctrl, MSG_DONE, sender_round, 0) < 0)
+    if(send_msg(ctrl, MSG_DONE, sender_round, 0) < 0) {
         perror("write DONE");
+        return 1;
+    }
     /* 送信側が先に閉じるのを待つ（未読データを残してcloseするとRSTになり、
        送信側がDONEを読めないことがあるため） */
     shutdown(ctrl, SHUT_WR);

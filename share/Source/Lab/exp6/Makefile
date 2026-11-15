@@ -1,13 +1,16 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -O2 -g -D_GNU_SOURCE
 LDLIBS = -lrt
-PROGRAMS = tcp_send.out tcp_recv.out hyb_send.out hyb_recv.out udp_relay.out
+PROGRAMS = tcp_send.out tcp_recv.out tcp_relay.out hyb_send.out hyb_recv.out udp_relay.out
 
 # make data SIZE=100 で 100MiB のテストファイル test100M.dat を作る
 SIZE ?= 100
 
-.PHONY: all clean data
+.PHONY: all clean data test
 all: $(PROGRAMS)
+
+test: all
+	python3 test_transfer.py
 
 %.out: %.c common.h
 	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS)

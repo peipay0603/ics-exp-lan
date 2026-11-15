@@ -21,6 +21,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <signal.h>
+#include <limits.h>
 #include <endian.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -163,25 +164,45 @@ static inline int read_all(int fd, void *buf, size_t len)
     return 0;
 }
 
+/* UDPの順不同保存でも短い書き込み・割込みを処理してから受信済みにする。 */
+static inline int pwrite_all(int fd, const void *buf, size_t len, off_t offset)
+{
+    const char *p = buf;
+    while(len > 0) {
+        ssize_t n = pwrite(fd, p, len, offset);
+        if(n < 0 && errno == EINTR)
+            continue;
+        if(n <= 0) {
+            if(n == 0)
+                errno = EIO;
+            return -1;
+        }
+        p += n;
+        offset += n;
+        len -= (size_t)n;
+    }
+    return 0;
+}
+
 /* "1000" "64K" "1M" をバイト数にする。不正なら -1 */
 static inline long parse_size(const char *s)
 {
     char *end;
-    long v;
+    long v, scale = 1;
     errno = 0;
     v = strtol(s, &end, 10);
     if(errno != 0 || end == s || v <= 0)
         return -1;
     if(*end == 'k' || *end == 'K') {
-        v *= 1024;
+        scale = 1024;
         end++;
     } else if(*end == 'm' || *end == 'M') {
-        v *= 1024 * 1024;
+        scale = 1024 * 1024;
         end++;
     }
-    if(*end != '\0')
+    if(*end != '\0' || v > LONG_MAX / scale)
         return -1;
-    return v;
+    return v * scale;
 }
 
 /* ポート番号。不正なら -1 */

@@ -102,9 +102,11 @@ int main(int argc, char **argv)
         file_read_count++;
         while(sent < n) {
             ssize_t count = write(sock, buf + sent, (size_t)(n - sent));
-            if(count < 0) {
-                if(errno == EINTR)
+            if(count <= 0) {
+                if(count < 0 && errno == EINTR)
                     continue;
+                if(count == 0)
+                    errno = EIO;
                 perror("write socket");
                 return 1;
             }
@@ -125,8 +127,10 @@ int main(int argc, char **argv)
     clock_gettime(CLOCK_REALTIME, &end_time);
     elapsed = ts_diff(&start_time, &end_time);
 
-    if(total_bytes != (unsigned long long)st.st_size)
-        fprintf(stderr, "warning: file size changed while sending\n");
+    if(total_bytes != (unsigned long long)st.st_size) {
+        fprintf(stderr, "file size changed while sending\n");
+        return 1;
+    }
     printf("Send BUF_LEN: %ld\n", buf_len);
     printf("Send bytes: %llu\n", total_bytes);
     printf("File read count: %lu\n", file_read_count);
