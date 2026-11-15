@@ -146,6 +146,7 @@ class TransferTests(unittest.TestCase):
     def test_tcp_incomplete_transfer_is_an_error(self):
         target = free_port()
         output = self.directory / 'incomplete.dat'
+        output.write_bytes(b'previous complete file')
         r = self.launch('tcp_recv', target, output)
         now = time.time()
         sec, nsec = int(now), int((now % 1) * 1e9)
@@ -158,6 +159,142 @@ class TransferTests(unittest.TestCase):
         log, _ = r.communicate(timeout=3)
         self.assertEqual(r.returncode, 2, log.decode())
         self.assertIn(b'INCOMPLETE', log)
+        self.assertEqual(output.read_bytes(), b'previous complete file')
+        self.assertFalse(list(self.directory.glob('*.part.*')))
+
+    def test_tcp_sender_rejects_peer_that_discards_the_file(self):
+        source = self.source(4097)
+        listener = socket.socket()
+        listener.bind(('127.0.0.1', 0))
+        listener.listen(1)
+        port = listener.getsockname()[1]
+        data = []
+
+        def discard():
+            with listener:
+                sock, _ = listener.accept()
+                with sock:
+                    sock.settimeout(3)
+                    while True:
+                        block = sock.recv(65536)
+                        if not block:
+                            break
+                        data.append(block)
+
+        worker = threading.Thread(target=discard, daemon=True)
+        worker.start()
+        try:
+            self.send('tcp_send', '127.0.0.1', port, source, success=False)
+        finally:
+            worker.join(4)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(b''.join(data)[32:], source.read_bytes())
+
+    def test_tcp_receipts_are_required_and_validated(self):
+        source = self.source(4097)
+        for status, size_delta, success in [(0, 0, True), (1, 0, False), (0, -1, False)]:
+            with self.subTest(status=status, size_delta=size_delta):
+                with socket.socket() as listener:
+                    listener.bind(('127.0.0.1', 0))
+                    listener.listen(1)
+                    listener.settimeout(3)
+                    sender = subprocess.Popen([str(HERE / 'tcp_send.out'), '127.0.0.1',
+                                               str(listener.getsockname()[1]), str(source)],
+                                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                    self.processes.append(sender)
+                    peer, _ = listener.accept()
+                    with peer:
+                        peer.settimeout(3)
+                        blocks = []
+                        while True:
+                            block = peer.recv(65536)
+                            if not block:
+                                break
+                            blocks.append(block)
+                        data = b''.join(blocks)
+                        self.assertEqual(struct.unpack('!I', data[:4])[0], 0x45365432)
+                        self.assertEqual(data[32:], source.read_bytes())
+                        self.assertIsNone(sender.poll(), 'sender exited before a receipt')
+                        receipt = struct.pack('!IIQ', 0x4536414b, status, source.stat().st_size + size_delta)
+                        peer.sendall(receipt[:3])
+                        time.sleep(0.01)
+                        peer.sendall(receipt[3:])
+                    log, _ = sender.communicate(timeout=3)
+                    self.assertEqual(sender.returncode == 0, success, log.decode())
+
+    def test_tcp_receipt_timeout(self):
+        source = self.source(1)
+        with socket.socket() as listener:
+            listener.bind(('127.0.0.1', 0))
+            listener.listen(1)
+            listener.settimeout(3)
+            sender = subprocess.Popen([str(HERE / 'tcp_send.out'), '-t', '1', '127.0.0.1',
+                                       str(listener.getsockname()[1]), str(source)],
+                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            self.processes.append(sender)
+            peer, _ = listener.accept()
+            with peer:
+                peer.settimeout(3)
+                while peer.recv(65536):
+                    pass
+                log, _ = sender.communicate(timeout=3)  # 接続は開いたまま、返信しない
+            self.assertNotEqual(sender.returncode, 0, log.decode())
+            self.assertIn(b'did not confirm', log)
+
+    def test_tcp_atomic_replacement_and_legacy_mode(self):
+        target = free_port()
+        output = self.directory / 'atomic.dat'
+        output.write_bytes(b'previous file')
+        receiver = self.launch('tcp_recv', target, output)
+        with socket.create_connection(('127.0.0.1', target), timeout=3) as peer:
+            now = time.time()
+            peer.sendall(struct.pack('!IIQqq', 0x45365443, 1000, 6, int(now), 0) + b'abc')
+            deadline = time.monotonic() + 2
+            while time.monotonic() < deadline:
+                parts = list(self.directory.glob('atomic.dat.part.*'))
+                if parts and parts[0].stat().st_size == 3:
+                    break
+                time.sleep(0.01)
+            self.assertEqual(output.read_bytes(), b'previous file')
+            self.assertEqual(len(parts), 1)
+            peer.sendall(b'def')
+        log, _ = receiver.communicate(timeout=3)
+        self.assertEqual(receiver.returncode, 0, log.decode())
+        self.assertEqual(output.read_bytes(), b'abcdef')
+        self.assertFalse(list(self.directory.glob('*.part.*')))
+        source = self.source(131089)
+        receiver = self.launch('tcp_recv', target, output)
+        log = self.send('tcp_send', '-L', '127.0.0.1', target, source)
+        self.assertIn('confirmed=0', log)
+        self.receive(receiver, source, output)
+
+    def test_tcp_save_failure_is_reported_to_sender(self):
+        target = free_port()
+        output = self.directory / 'existing-directory'
+        output.mkdir()
+        source = self.source(4097)
+        receiver = self.launch('tcp_recv', target, output)
+        self.send('tcp_send', '127.0.0.1', target, source, success=False)
+        log, _ = receiver.communicate(timeout=3)
+        self.assertNotEqual(receiver.returncode, 0, log.decode())
+        self.assertTrue(output.is_dir())
+        self.assertFalse(list(self.directory.glob('*.part.*')))
+
+    def test_tcp_relay_recovers_after_idle_connection(self):
+        target, via = free_port(), free_port()
+        relay = self.launch('tcp_relay', '-t', 1, via, '127.0.0.1', target)
+        output = self.directory / 'received.dat'
+        receiver = self.launch('tcp_recv', target, output)
+        with socket.create_connection(('127.0.0.1', via), timeout=3) as peer:
+            peer.settimeout(3)
+            self.assertEqual(peer.recv(1), b'')
+        log, _ = receiver.communicate(timeout=3)
+        self.assertNotEqual(receiver.returncode, 0, log.decode())
+        source = self.source(65537)
+        receiver = self.launch('tcp_recv', target, output)
+        self.send('tcp_send', '127.0.0.1', via, source)
+        self.receive(receiver, source, output)
+        self.assertIsNone(relay.poll())
 
     def test_hybrid_empty_and_partial_chunk(self):
         for size in (0, 1, 1465, 131089):
@@ -169,6 +306,18 @@ class TransferTests(unittest.TestCase):
                 self.send('hyb_send', '127.0.0.1', target, source,
                           '127.0.0.1:%d@20' % target)
                 self.receive(r, source, output)
+
+    def test_hybrid_save_failure_is_not_reported_as_done(self):
+        target = free_port()
+        output = self.directory / 'existing-directory'
+        output.mkdir()
+        source = self.source(1465)
+        receiver = self.launch('hyb_recv', target, output)
+        self.send('hyb_send', '127.0.0.1', target, source, '127.0.0.1:%d@20' % target, success=False)
+        log, _ = receiver.communicate(timeout=3)
+        self.assertNotEqual(receiver.returncode, 0, log.decode())
+        self.assertTrue(output.is_dir())
+        self.assertFalse(list(self.directory.glob('*.part.*')))
 
     def test_hybrid_two_relays_and_weighted_paths(self):
         target, first, second = free_port(), free_port(), free_port()
@@ -206,6 +355,7 @@ class TransferTests(unittest.TestCase):
         target = free_port()
         source = self.source(1465)
         output = self.directory / 'incomplete.dat'
+        output.write_bytes(b'previous complete file')
         r = self.launch('hyb_recv', '-w', 10, target, output)
         proxy = UDPProxy(target, discard_all=True)
         self.proxies.append(proxy)
@@ -214,6 +364,8 @@ class TransferTests(unittest.TestCase):
         self.assertIn('too many rounds', log)
         receiver, _ = r.communicate(timeout=3)
         self.assertNotEqual(r.returncode, 0, receiver.decode())
+        self.assertEqual(output.read_bytes(), b'previous complete file')
+        self.assertFalse(list(self.directory.glob('*.part.*')))
 
     def test_invalid_rate_and_overflow_are_rejected(self):
         source = self.source(1)

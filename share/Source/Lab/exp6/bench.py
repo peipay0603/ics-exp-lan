@@ -19,7 +19,7 @@ HERE = Path(__file__).resolve().parent
 SHARE = HERE.parents[2]
 REMOTE = '/home/ubuntu/share/Source/Lab/exp6'
 FIELDS = ('datetime mode dest param bytes run time_s goodput_mbps send_cpu_s recv_cpu_s '
-          'rounds retrans cmp label status sender_exit receiver_exit relay_buf_len logs').split()
+          'rounds retrans cmp label status sender_exit receiver_exit relay_buf_len confirmed logs').split()
 
 
 def docker(node, *args):
@@ -197,6 +197,11 @@ def run_condition(mode, destination, params, directory, csv_path, label='', rela
                 if row['receiver_exit'] != 0:
                     raise RuntimeError('receiver failed: ' + str(row['receiver_exit']))
                 sent, received = result(attempt / 'sender.log', mode + '_send'), result(attempt / 'receiver.log', mode + '_recv')
+                if mode == 'tcp':
+                    confirmed = sent.get('confirmed')
+                    if confirmed not in ('0', '1') or received.get('confirmed') != confirmed:
+                        raise ValueError('missing or inconsistent TCP confirmation metadata; rebuild the binaries')
+                    row['confirmed'] = confirmed
                 if int(sent['bytes']) != expected or int(received['bytes']) != expected:
                     raise ValueError('RESULT byte count differs from source size')
                 duration, goodput = float(received['time']), float(received['goodput_mbps'])
@@ -222,7 +227,7 @@ def run_condition(mode, destination, params, directory, csv_path, label='', rela
                         job.close()
                 if receiver:
                     row['receiver_exit'] = receiver.process.returncode
-                docker('node1', 'rm', '-f', '--', output)
+                docker('node1', 'sh', '-c', 'rm -f -- "$1" "$1".part.*', 'exp6-clean', output)
             append_row(csv_path, row)
             rows.append(row)
             print('%s %s param=%s run=%d time=%ss goodput=%sMbps cmp=%s status=%s' %

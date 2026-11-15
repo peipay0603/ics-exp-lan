@@ -42,9 +42,17 @@ class BenchmarkTests(unittest.TestCase):
             self.assertEqual(row['status'], 'OK')
             self.assertEqual(row['cmp'], 'OK')
             self.assertEqual(row['bytes'], '4097')
+            self.assertEqual(row['confirmed'], '1')
             self.assertEqual(row['label'], self.env['LABEL'])
             log = bench.HERE / row['logs'] / 'receiver.log'
             self.assertTrue(log.is_file())
+
+    def test_explicit_legacy_mode_is_recorded(self):
+        self.env['SEND_OPTS'] = '-L'
+        result, rows = self.run_bench()
+        self.assertEqual(result.returncode, 0, result.stdout.decode())
+        self.assertEqual(rows[0]['confirmed'], '0')
+        self.assertEqual(rows[0]['cmp'], 'OK')
 
     def test_failure_does_not_stop_an_unrelated_receiver(self):
         other_pid = uuid.uuid4().hex
@@ -95,6 +103,21 @@ class BenchmarkTests(unittest.TestCase):
             job.close()
         probe = bench.docker('node1', 'sh', '-c', 'kill -0 "$1" 2>/dev/null', 'probe', pid)
         self.assertNotEqual(probe.returncode, 0)
+
+    def test_timeout_removes_only_its_partial_receive_file(self):
+        listing = ['sh', '-c', 'find /tmp -maxdepth 1 -name "exp6-recv-*.part.*" -print']
+        before = set(bench.docker('node1', *listing).stdout.splitlines())
+        self.env['TIMEOUT'] = '1'
+        result = subprocess.run(['python3', str(bench.HERE / 'bench.py'), 'hyb',
+                                 '172.21.0.10:24972@10', '1464'], env=self.env,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=15)
+        self.assertNotEqual(result.returncode, 0, result.stdout.decode())
+        after = set(bench.docker('node1', *listing).stdout.splitlines())
+        self.assertEqual(after, before)
+        with self.csv.open(newline='') as stream:
+            rows = list(csv.DictReader(stream))
+        self.assertEqual(rows[0]['status'], 'ERROR')
+        self.assertNotIn(b'AVERAGE ', result.stdout)
 
 
 if __name__ == '__main__':

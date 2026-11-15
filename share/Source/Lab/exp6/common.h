@@ -43,6 +43,15 @@
 /* ファイル本体の前に1回だけ送る。値はすべてネットワークバイトオーダ。
    中継（relay）はバイト列をそのまま流すだけなので、このヘッダも素通りする。 */
 #define TCP_MAGIC           0x45365443u     /* "E6TC" */
+#define TCP_CONFIRMED_MAGIC 0x45365432u     /* "E6T2": 保存完了の返信を要求 */
+#define TCP_RECEIPT_MAGIC   0x4536414bu     /* "E6AK" */
+
+struct tcp_receipt {
+    uint32_t magic;
+    uint32_t status;        /* 0: 保存完了。その他: 受信・保存失敗 */
+    uint64_t file_size;
+};
+_Static_assert(sizeof(struct tcp_receipt) == 16, "tcp_receipt must be 16 bytes");
 
 struct tcp_hdr {
     uint32_t magic;
@@ -215,6 +224,22 @@ static inline int parse_port(const char *s)
     if(errno != 0 || end == s || *end != '\0' || v < 1 || v > 65535)
         return -1;
     return (int)v;
+}
+
+/* 待ち時間は1秒〜1時間。末尾の文字や桁あふれを許さない。 */
+static inline int parse_timeout(const char *s)
+{
+    int value = parse_port(s);
+    return value >= 1 && value <= 3600 ? value : -1;
+}
+
+static inline int send_receipt(int sock, uint32_t status, uint64_t bytes)
+{
+    struct tcp_receipt receipt;
+    receipt.magic = htonl(TCP_RECEIPT_MAGIC);
+    receipt.status = htonl(status);
+    receipt.file_size = htobe64(bytes);
+    return write_all(sock, &receipt, sizeof(receipt));
 }
 
 /* ホスト名またはIPアドレスとポートから宛先アドレスを作る。成功 0 */

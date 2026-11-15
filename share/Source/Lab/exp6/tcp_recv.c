@@ -9,6 +9,7 @@
 /*  node3の時刻とnode1の時刻をそのまま引き算できる。                  */
 
 #include "common.h"
+#include "output_file.h"
 
 static void usage(const char *prog)
 {
@@ -22,7 +23,7 @@ int main(int argc, char **argv)
 {
     long buf_len = DEFAULT_BUF_LEN;
     int opt, port, sock0, sock, fd, r;
-    int yes = 1;
+    int yes = 1, confirmed;
     char *buf, *filename;
     struct sockaddr_in serverAddr, clientAddr;
     socklen_t addrLen;
@@ -54,6 +55,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "invalid port\n");
         return 1;
     }
+    signal(SIGPIPE, SIG_IGN);
     buf = malloc((size_t)buf_len);
     if(buf == NULL) {
         perror("malloc");
@@ -94,16 +96,17 @@ int main(int argc, char **argv)
 
     /* STEP 3: ヘッダを読む */
     r = read_all(sock, &hdr, sizeof(hdr));
-    if(r != 0 || ntohl(hdr.magic) != TCP_MAGIC) {
+    if(r != 0 || (ntohl(hdr.magic) != TCP_MAGIC && ntohl(hdr.magic) != TCP_CONFIRMED_MAGIC)) {
         fprintf(stderr, "bad header（送信側は tcp_send.out ですか）\n");
         return 1;
     }
+    confirmed = ntohl(hdr.magic) == TCP_CONFIRMED_MAGIC;
     file_size = be64toh(hdr.file_size);
     start_time.tv_sec = (time_t)(int64_t)be64toh((uint64_t)hdr.start_sec);
     start_time.tv_nsec = (long)(int64_t)be64toh((uint64_t)hdr.start_nsec);
 
     /* STEP 4: 保存先を開く */
-    fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    fd = output_open(filename);
     if(fd < 0) {
         perror(filename);
         return 1;
@@ -131,11 +134,17 @@ int main(int argc, char **argv)
     }
 
     /* STEP 6: 保存を終え、時間とグッドプットを計算する */
-    if(close(fd) < 0) {
-        perror("close file");
+    if(total_bytes == file_size && output_commit() < 0) {
+        perror("save file");
+        if(confirmed)
+            send_receipt(sock, 1, total_bytes);
         return 1;
     }
     clock_gettime(CLOCK_REALTIME, &end_time);
+    if(confirmed && send_receipt(sock, total_bytes == file_size ? 0 : 1, total_bytes) < 0) {
+        perror("send receipt");
+        return 1;
+    }
     close(sock);
     e2e = ts_diff(&start_time, &end_time);
     local = ts_diff(&accept_time, &end_time);
@@ -153,10 +162,10 @@ int main(int argc, char **argv)
     if(e2e <= 0 || e2e + 1.0 < local)
         fprintf(stderr, "warning: 送信側と時計が共有されていない可能性があります\n");
     printf("RESULT prog=tcp_recv buf_len=%ld bytes=%llu expected=%llu reads=%lu"
-           " time=%.6f goodput_mbps=%.3f local_time=%.6f cpu=%.6f\n",
+           " time=%.6f goodput_mbps=%.3f local_time=%.6f cpu=%.6f confirmed=%d\n",
            buf_len, total_bytes, file_size, receive_count, e2e,
            e2e > 0 ? (double)total_bytes * 8.0 / e2e / 1e6 : 0.0,
-           local, cpu_seconds());
+           local, cpu_seconds(), confirmed);
     free(buf);
     return total_bytes == file_size ? 0 : 2;
 }

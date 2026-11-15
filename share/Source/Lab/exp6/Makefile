@@ -12,7 +12,7 @@ all: $(PROGRAMS)
 test: all
 	python3 test_transfer.py
 
-%.out: %.c common.h
+%.out: %.c common.h output_file.h
 	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS)
 
 data: test$(SIZE)M.dat

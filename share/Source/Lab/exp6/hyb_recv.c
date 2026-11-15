@@ -14,6 +14,7 @@
 /*  全チャンクがそろったら、その時点で DONE を返す。                  */
 
 #include "common.h"
+#include "output_file.h"
 #include <poll.h>
 
 #define RECV_BATCH  256     /* 1回の poll() の後にまとめて受け取る最大数 */
@@ -150,7 +151,7 @@ int main(int argc, char **argv)
     last_len = total_chunks ? (uint32_t)(file_size - (uint64_t)(total_chunks - 1) * chunk) : 0;
 
     /* STEP 3: 保存先を用意する（順不同で書くので先に大きさを決めておく） */
-    fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    fd = output_open(filename);
     if(fd < 0 || ftruncate(fd, (off_t)file_size) < 0) {
         perror(filename);
         return 1;
@@ -272,8 +273,8 @@ int main(int argc, char **argv)
     }
 
     /* STEP 6: 全部そろった。保存を終えて DONE を返す */
-    if(close(fd) < 0) {
-        perror("close file");
+    if(output_commit() < 0) {
+        perror("save file");
         return 1;
     }
     clock_gettime(CLOCK_REALTIME, &end_time);
