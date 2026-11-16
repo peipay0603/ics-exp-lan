@@ -1,0 +1,11 @@
+waiting connection... port=24100 (TCP control + UDP data), UDP rcvbuf=8388608 bytes
+From: 172.21.0.30 (control)
+File: 943718400 bytes, chunk 1464 bytes x 644617
+Receive bytes: 943718400 / 943718400 OK
+Datagrams: dup=0 stale=0 bad=0
+NACK rounds: 0 (NACKした延べチャンク数 0)
+Time (送信開始→保存完了): 113.254864 sec
+Goodput: 66.662 Mbps
+Time (最初のデータ→保存完了, 参考): 113.240605 sec
+CPU time (user+sys): 4.429687 sec
+RESULT prog=hyb_recv chunk=1464 bytes=943718400 nack_rounds=0 nacked=0 dup=0 time=113.254864 goodput_mbps=66.662 local_time=113.240605 cpu=4.429690 rcvbuf=8388608

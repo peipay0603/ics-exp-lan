@@ -1,0 +1,10 @@
+warning: 172.21.0.10:24972@10 のUDPポートが閉じています（中継・受信側は起動していますか）
+control connection closed
+round 1: sent 3, missing 3 (100.000%) -> resend
+round 2: sent 3, missing 3 (100.000%) -> resend
+round 3: sent 3, missing 3 (100.000%) -> resend
+round 4: sent 3, missing 3 (100.000%) -> resend
+round 5: sent 3, missing 3 (100.000%) -> resend
+round 6: sent 3, missing 3 (100.000%) -> resend
+round 7: sent 3, missing 3 (100.000%) -> resend
+round 8: sent 3, missing 3 (100.000%) -> resend

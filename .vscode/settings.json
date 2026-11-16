@@ -1,3 +1,4 @@
 {
-  "cmake.sourceDirectory": "/Users/kumpei/Cords/ics-exp-lan/share/day2"
+  "cmake.sourceDirectory": "/Users/kumpei/Cords/ics-exp-lan/share/day2",
+  "python.terminal.useEnvFile": true
 }

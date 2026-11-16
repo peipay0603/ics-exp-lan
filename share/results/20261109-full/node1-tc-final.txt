@@ -1,0 +1,8 @@
+qdisc noqueue 0: dev lo root refcnt 2 
+qdisc tbf 1: dev eth2 root refcnt 12 rate 50Mbit burst 25Kb lat 36.9ms 
+qdisc netem 10: dev eth2 parent 1:1 limit 1000 delay 250.0ms
+qdisc tbf 1: dev eth3 root refcnt 12 rate 50Mbit burst 25Kb lat 36.9ms 
+qdisc tbf 1: dev eth0 root refcnt 12 rate 1Mbit burst 10Kb lat 737.3ms 
+qdisc netem 10: dev eth0 parent 1:1 limit 1000 delay 5.0ms
+qdisc tbf 1: dev eth1 root refcnt 12 rate 1Mbit burst 10Kb lat 737.3ms 
+qdisc netem 10: dev eth1 parent 1:1 limit 1000 delay 5.0ms

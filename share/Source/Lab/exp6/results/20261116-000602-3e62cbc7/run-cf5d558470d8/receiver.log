@@ -1,0 +1,10 @@
+waiting connection... port=24970 BUF_LEN=1000
+From: 172.21.0.30:52938
+Receive BUF_LEN: 1000 (sender BUF_LEN: 1000)
+Receive bytes: 4097 / 4097 OK
+Receive count: 5
+Time (送信開始→保存完了): 0.008956 sec
+Goodput: 3.659 Mbps
+Time (accept→保存完了, 参考): 0.000059 sec
+CPU time (user+sys): 0.000313 sec
+RESULT prog=tcp_recv buf_len=1000 bytes=4097 expected=4097 reads=5 time=0.008956 goodput_mbps=3.659 local_time=0.000059 cpu=0.000313

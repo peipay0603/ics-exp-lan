@@ -1,0 +1,3 @@
+# Measurement archives keep original padding and line endings.
+share/results/** -whitespace
+share/Source/Lab/exp6/results/** -whitespace

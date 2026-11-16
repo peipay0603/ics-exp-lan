@@ -1,0 +1,11 @@
+File: 943718400 bytes, chunk 1464 bytes x 644617, BUF_LEN(file read) 64416 bytes
+Path 0: 172.27.0.40:24100@40 sent=373670
+Path 1: 172.21.0.10:24100@9.5 sent=88758
+Path 2: 172.27.0.40:24102@10 sent=93431
+Path 3: 172.24.0.20:24100@9.5 sent=88758
+Rounds: 1, datagrams sent: 644617 (retransmitted 0)
+File read count: 14651
+Time (送信開始→DONE受信): 113.553734 sec
+Goodput: 66.486 Mbps
+CPU time (user+sys): 3.747292 sec
+RESULT prog=hyb_send chunk=1464 bytes=943718400 rounds=1 sent=644617 retrans=0 time=113.553734 goodput_mbps=66.486 cpu=3.747297

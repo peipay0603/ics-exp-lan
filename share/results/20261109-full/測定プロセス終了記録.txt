@@ -1,0 +1,13 @@
+node1: /tmp/baseline-server /home/ubuntu/share/results/20261109-full/final.dat 10060
+node1: /home/ubuntu/share/Source/Lab/final/fserver.out /home/ubuntu/share/results/20261109-full/final.dat 10070
+node1: /home/ubuntu/share/Source/Lab/final/fserver.out /home/ubuntu/share/results/20261109-full/test.dat 10071
+node1: /home/ubuntu/share/Source/Lab/final/fserver.out /home/ubuntu/share/results/20261109-full/final-long.dat 10072
+node3: /home/ubuntu/share/Source/Lab/final/relay.out 10070 172.21.0.10 10070
+node3: /home/ubuntu/share/Source/Lab/final/relay.out 10071 172.21.0.10 10071
+node3: /home/ubuntu/share/Source/Lab/final/relay.out 10072 172.21.0.10 10072
+node4: /home/ubuntu/share/Source/Lab/final/relay.out 10070 172.22.0.10 10070
+node4: /home/ubuntu/share/Source/Lab/final/relay.out 10071 172.22.0.10 10071
+node4: /home/ubuntu/share/Source/Lab/final/relay.out 10072 172.22.0.10 10072
+node5: /home/ubuntu/share/Source/Lab/final/relay.out 10070 172.23.0.10 10070
+node5: /home/ubuntu/share/Source/Lab/final/relay.out 10071 172.23.0.10 10071
+node5: /home/ubuntu/share/Source/Lab/final/relay.out 10072 172.23.0.10 10072

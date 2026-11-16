@@ -1,0 +1,21 @@
+{
+  "baseline": {
+    "bytes": 104857600,
+    "seconds": 877.226427322,
+    "goodput_mbps": 0.956265
+  },
+  "optimized": {
+    "bytes": 104857600,
+    "seconds": 17.628181008,
+    "goodput_mbps": 47.58635
+  },
+  "selected_host": "172.26.0.50",
+  "speedup": 49.76273087528987,
+  "long_run": {
+    "bytes": 671088640,
+    "seconds": 112.454999871,
+    "goodput_mbps": 47.740955
+  },
+  "same_file_sha256": "e3f8e531d385ce13d2e7b2260059767eb27368f44949cf0ac218bb3ab816833f",
+  "long_file_sha256": "c7920ece99b1b3fcb63ba8c0c4ae7d94a758491c845330700360732bb6cddc60"
+}

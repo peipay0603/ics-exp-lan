@@ -1,0 +1,44 @@
+{
+  "recorded_at": "2026-11-16T04:16:26.250478+09:00",
+  "nodes": {
+    "node1": {
+      "addresses": "1: lo    inet 127.0.0.1/8 scope host lo\\       valid_lft forever preferred_lft forever\n11: eth2    inet 172.22.0.10/16 brd 172.22.255.255 scope global eth2\\       valid_lft forever preferred_lft forever\n12: eth3    inet 172.23.0.10/16 brd 172.23.255.255 scope global eth3\\       valid_lft forever preferred_lft forever\n13: eth0    inet 172.20.0.10/16 brd 172.20.255.255 scope global eth0\\       valid_lft forever preferred_lft forever\n14: eth1    inet 172.21.0.10/16 brd 172.21.255.255 scope global eth1\\       valid_lft forever preferred_lft forever\n",
+      "qdisc": "qdisc noqueue 0: dev lo root refcnt 2 \nqdisc tbf 1: dev eth2 root refcnt 12 rate 10Mbit burst 20Kb lat 147.5ms \nqdisc tbf 1: dev eth3 root refcnt 12 rate 50Mbit burst 25Kb lat 36.9ms \nqdisc netem 10: dev eth3 parent 1:1 limit 1000 delay 10.0ms\nqdisc tbf 1: dev eth0 root refcnt 12 rate 1Mbit burst 10Kb lat 737.3ms \nqdisc netem 10: dev eth0 parent 1:1 limit 1000 delay 5.0ms\nqdisc tbf 1: dev eth1 root refcnt 12 rate 10Mbit burst 20Kb lat 147.5ms \nqdisc netem 10: dev eth1 parent 1:1 limit 1000 delay 2.5ms\n"
+    },
+    "node2": {
+      "addresses": "1: lo    inet 127.0.0.1/8 scope host lo\\       valid_lft forever preferred_lft forever\n11: eth2    inet 172.25.0.20/16 brd 172.25.255.255 scope global eth2\\       valid_lft forever preferred_lft forever\n12: eth3    inet 172.26.0.20/16 brd 172.26.255.255 scope global eth3\\       valid_lft forever preferred_lft forever\n13: eth0    inet 172.20.0.20/16 brd 172.20.255.255 scope global eth0\\       valid_lft forever preferred_lft forever\n14: eth1    inet 172.24.0.20/16 brd 172.24.255.255 scope global eth1\\       valid_lft forever preferred_lft forever\n",
+      "qdisc": "qdisc noqueue 0: dev lo root refcnt 2 \nqdisc tbf 1: dev eth2 root refcnt 12 rate 1Mbit burst 10Kb lat 737.3ms \nqdisc netem 10: dev eth2 parent 1:1 limit 1000 delay 5.0ms\nqdisc tbf 1: dev eth3 root refcnt 12 rate 10Mbit burst 20Kb lat 147.5ms \nqdisc tbf 1: dev eth0 root refcnt 12 rate 1Mbit burst 10Kb lat 737.3ms \nqdisc netem 10: dev eth0 parent 1:1 limit 1000 delay 5.0ms\nqdisc tbf 1: dev eth1 root refcnt 12 rate 10Mbit burst 20Kb lat 147.5ms \n"
+    },
+    "node3": {
+      "addresses": "1: lo    inet 127.0.0.1/8 scope host lo\\       valid_lft forever preferred_lft forever\n11: eth2    inet 172.27.0.30/16 brd 172.27.255.255 scope global eth2\\       valid_lft forever preferred_lft forever\n12: eth3    inet 172.28.0.30/16 brd 172.28.255.255 scope global eth3\\       valid_lft forever preferred_lft forever\n13: eth0    inet 172.21.0.30/16 brd 172.21.255.255 scope global eth0\\       valid_lft forever preferred_lft forever\n14: eth1    inet 172.24.0.30/16 brd 172.24.255.255 scope global eth1\\       valid_lft forever preferred_lft forever\n",
+      "qdisc": "qdisc noqueue 0: dev lo root refcnt 2 \nqdisc tbf 1: dev eth2 root refcnt 12 rate 50Mbit burst 25Kb lat 36.9ms \nqdisc netem 10: dev eth2 parent 1:1 limit 1000 delay 10.0ms\nqdisc tbf 1: dev eth3 root refcnt 12 rate 1Mbit burst 10Kb lat 737.3ms \nqdisc netem 10: dev eth3 parent 1:1 limit 1000 delay 5.0ms\nqdisc tbf 1: dev eth0 root refcnt 12 rate 10Mbit burst 20Kb lat 147.5ms \nqdisc netem 10: dev eth0 parent 1:1 limit 1000 delay 2.5ms\nqdisc tbf 1: dev eth1 root refcnt 12 rate 10Mbit burst 20Kb lat 147.5ms \n"
+    },
+    "node4": {
+      "addresses": "1: lo    inet 127.0.0.1/8 scope host lo\\       valid_lft forever preferred_lft forever\n11: eth0    inet 172.22.0.40/16 brd 172.22.255.255 scope global eth0\\       valid_lft forever preferred_lft forever\n12: eth1    inet 172.25.0.40/16 brd 172.25.255.255 scope global eth1\\       valid_lft forever preferred_lft forever\n13: eth2    inet 172.27.0.40/16 brd 172.27.255.255 scope global eth2\\       valid_lft forever preferred_lft forever\n14: eth3    inet 172.29.0.40/16 brd 172.29.255.255 scope global eth3\\       valid_lft forever preferred_lft forever\n",
+      "qdisc": "qdisc noqueue 0: dev lo root refcnt 2 \nqdisc tbf 1: dev eth0 root refcnt 12 rate 10Mbit burst 20Kb lat 147.5ms \nqdisc tbf 1: dev eth1 root refcnt 12 rate 1Mbit burst 10Kb lat 737.3ms \nqdisc netem 10: dev eth1 parent 1:1 limit 1000 delay 5.0ms\nqdisc tbf 1: dev eth2 root refcnt 12 rate 50Mbit burst 25Kb lat 36.9ms \nqdisc netem 10: dev eth2 parent 1:1 limit 1000 delay 10.0ms\nqdisc tbf 1: dev eth3 root refcnt 12 rate 50Mbit burst 25Kb lat 36.9ms \nqdisc netem 10: dev eth3 parent 1:1 limit 1000 delay 10.0ms\n"
+    },
+    "node5": {
+      "addresses": "1: lo    inet 127.0.0.1/8 scope host lo\\       valid_lft forever preferred_lft forever\n11: eth3    inet 172.29.0.50/16 brd 172.29.255.255 scope global eth3\\       valid_lft forever preferred_lft forever\n12: eth0    inet 172.23.0.50/16 brd 172.23.255.255 scope global eth0\\       valid_lft forever preferred_lft forever\n13: eth1    inet 172.26.0.50/16 brd 172.26.255.255 scope global eth1\\       valid_lft forever preferred_lft forever\n14: eth2    inet 172.28.0.50/16 brd 172.28.255.255 scope global eth2\\       valid_lft forever preferred_lft forever\n",
+      "qdisc": "qdisc noqueue 0: dev lo root refcnt 2 \nqdisc tbf 1: dev eth3 root refcnt 12 rate 50Mbit burst 25Kb lat 36.9ms \nqdisc netem 10: dev eth3 parent 1:1 limit 1000 delay 10.0ms\nqdisc tbf 1: dev eth0 root refcnt 12 rate 50Mbit burst 25Kb lat 36.9ms \nqdisc netem 10: dev eth0 parent 1:1 limit 1000 delay 10.0ms\nqdisc tbf 1: dev eth1 root refcnt 12 rate 10Mbit burst 20Kb lat 147.5ms \nqdisc tbf 1: dev eth2 root refcnt 12 rate 1Mbit burst 10Kb lat 737.3ms \nqdisc netem 10: dev eth2 parent 1:1 limit 1000 delay 5.0ms\n"
+    }
+  },
+  "git_head": "499d626de54ae9cefd4f9f525469781d71a43641",
+  "tc2_verified": false,
+  "profile_errors": [],
+  "source_sha256": {
+    "test_bench.py": "210c7b59535b09df0cbb0a3f5cf42e1d6ac36709bfdb8665676ae80187167101",
+    "bench.sh": "d5818eb5364dc990ab4a8fa62fe448249b78df095d2b36523af53f3cf0f1d924",
+    "hyb_recv.c": "eedc9b2148fac1744a1df6882bcf80ed81135775b3917ccfe203299ad48ea020",
+    "output_file.h": "3fb281cc28781567032b22745dab66f644dc8fc7d7b8ed77c3def1588ccccefe",
+    "Makefile": "c5c8524dd7485b759396984bb9a436e24f8b2a4629357adcd40548d18ed28eeb",
+    "tcp_recv.c": "f759b7ad0a5b5c1ccfa557f2e7f2362c47773af032a2a92dbb0915649f68ae57",
+    "bench.py": "c748a7f525a996ba532c770c675f525511b4c80fdb32144e554d64510267f8ab",
+    "prepare_tc2.sh": "a53b2e5f8661016d4f4bad774d65eedd369fef187c8ac533598d324a56055efb",
+    "common.h": "24617fb30954348d7c5313e2745fb87dd8817ed9c14356c55cc5830242242aea",
+    "hyb_send.c": "1874da97bc42118b41567bd2cea6e5b8d44ea6f076853945de98e606e4705ec6",
+    "test_transfer.py": "5dbac06d6f968fe2e5faad6a8780b8acd1ae0e28fcee80538113c4dcd2fed49e",
+    "udp_relay.c": "8b6b82fbee23caac4ae981f1082e64d7e7d90b4f5946abf96ad0d72ce2ec7c0b",
+    "tcp_relay.c": "70686edaaa774847441cc1c63faa9f11e396b5f3290918dae6288200cebe8e41",
+    "tcp_send.c": "4ff1a94711e702d48bd9b17e2daf7240e2f6170d40b917b6feb7b68d7e76173e"
+  }
+}
