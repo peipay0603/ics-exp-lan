@@ -1,0 +1,7 @@
+ホスト側で実行した統合テストの結果要約（ツールの実行出力を確認）
+
+python3 -m unittest discover -s share/Source/Lab/exp6 -p test_bench.py -v
+Ran 7 tests in 21.261s
+OK
+
+Dockerを操作するため、このテストはコンテナ内ではなくホストで実行する。

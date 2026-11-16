@@ -1,0 +1,31 @@
+{
+  "started_at": "2026-11-16T13:42:37.648478+09:00",
+  "argv": [
+    "share/route/bench.py",
+    "--file",
+    "share/Source/Lab/exp6/test900M.dat",
+    "--out",
+    "share/route/results/20261116-final900",
+    "--cases",
+    "A,B,C,D,E",
+    "--repeats",
+    "1",
+    "--min-seconds",
+    "100",
+    "--timeout",
+    "1800"
+  ],
+  "source": "Source/Lab/exp6/test900M.dat",
+  "bytes": 943718400,
+  "source_sha256": "318048f76a20432b3e27bc9190737ad9ee9e2863df530340a05d0bafc94fdb5b",
+  "timing": "client process start through save and exit; excludes hash checking",
+  "cases": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E"
+  ],
+  "repeats": 1,
+  "min_seconds": 100.0
+}

@@ -1,0 +1,3 @@
+fserver: file=/home/ubuntu/share/Source/Lab/exp6/test900M.dat port=31000
+accept from 172.21.0.10:50212
+[fserver 3717] served 943718400 bytes in 3600 requests

@@ -1,0 +1,6 @@
+Receive BUF_LEN: 1000
+Receive bytes: 943718400
+Receive count: 1020945
+Time: 789.697117963 sec
+Goodput: 9560307.399 bps (9.560307 Mbps)
+ROUTE_METRICS {"seconds": 789.7083328590088, "exit": 0, "user_s": 2.195428, "system_s": 50.403341}

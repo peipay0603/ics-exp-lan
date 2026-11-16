@@ -1,0 +1,98 @@
+[
+  {
+    "case": "D",
+    "path_count": 1,
+    "allocation": "weighted",
+    "bytes": 20971520,
+    "successes": 3,
+    "failures": 0,
+    "median_sec": 17.559553008002695,
+    "min_sec": 17.558404925017385,
+    "max_sec": 17.561994132993277,
+    "median_mbps": 9.55446644476306
+  },
+  {
+    "case": "D2",
+    "path_count": 2,
+    "allocation": "weighted",
+    "bytes": 20971520,
+    "successes": 3,
+    "failures": 0,
+    "median_sec": 16.107146006979747,
+    "min_sec": 16.073712799989153,
+    "max_sec": 16.111465424008202,
+    "median_mbps": 10.416007896575776
+  },
+  {
+    "case": "D24",
+    "path_count": 3,
+    "allocation": "weighted",
+    "bytes": 20971520,
+    "successes": 3,
+    "failures": 0,
+    "median_sec": 8.694101711997064,
+    "min_sec": 8.660375045001274,
+    "max_sec": 8.792182504024822,
+    "median_mbps": 19.297239157955765
+  },
+  {
+    "case": "D245",
+    "path_count": 4,
+    "allocation": "weighted",
+    "bytes": 20971520,
+    "successes": 3,
+    "failures": 0,
+    "median_sec": 8.25368171199807,
+    "min_sec": 8.250778379006078,
+    "max_sec": 8.28670221302309,
+    "median_mbps": 20.32694812499443
+  },
+  {
+    "case": "D25",
+    "path_count": 3,
+    "allocation": "weighted",
+    "bytes": 20971520,
+    "successes": 3,
+    "failures": 0,
+    "median_sec": 14.73284363100538,
+    "min_sec": 14.731878130987752,
+    "max_sec": 14.757489215000533,
+    "median_mbps": 11.387629177501228
+  },
+  {
+    "case": "D4",
+    "path_count": 2,
+    "allocation": "weighted",
+    "bytes": 20971520,
+    "successes": 3,
+    "failures": 0,
+    "median_sec": 9.064500712003792,
+    "min_sec": 9.061573671002407,
+    "max_sec": 9.0648566299933,
+    "median_mbps": 18.508703935322703
+  },
+  {
+    "case": "D45",
+    "path_count": 3,
+    "allocation": "weighted",
+    "bytes": 20971520,
+    "successes": 3,
+    "failures": 0,
+    "median_sec": 8.656320587004302,
+    "min_sec": 8.65623717100243,
+    "max_sec": 8.668688712001313,
+    "median_mbps": 19.38146332656344
+  },
+  {
+    "case": "D5",
+    "path_count": 2,
+    "allocation": "weighted",
+    "bytes": 20971520,
+    "successes": 3,
+    "failures": 0,
+    "median_sec": 16.030259548017057,
+    "min_sec": 16.025719425000716,
+    "max_sec": 16.03393184102606,
+    "median_mbps": 10.465966536440353
+  }
+]

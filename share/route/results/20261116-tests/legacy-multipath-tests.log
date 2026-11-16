@@ -1,0 +1,20 @@
+test_binary_empty_and_unaligned_sizes (test_transfer.TransferTests) ... ok
+test_complete_failure_leaves_no_output (test_transfer.TransferTests) ... /usr/lib/python3.6/threading.py:304: ResourceWarning: unclosed file <_io.FileIO name=4 mode='rb' closefd=True>
+  self._acquire_restore(saved_state)
+/usr/lib/python3.6/threading.py:304: ResourceWarning: unclosed file <_io.FileIO name=5 mode='rb' closefd=True>
+  self._acquire_restore(saved_state)
+/usr/lib/python3.6/threading.py:304: ResourceWarning: unclosed file <_io.FileIO name=6 mode='rb' closefd=True>
+  self._acquire_restore(saved_state)
+/usr/lib/python3.6/threading.py:304: ResourceWarning: unclosed file <_io.FileIO name=7 mode='rb' closefd=True>
+  self._acquire_restore(saved_state)
+ok
+test_failed_path_is_reassigned (test_transfer.TransferTests) ... ok
+test_fragmented_requests_and_invalid_ranges (test_transfer.TransferTests) ... ok
+test_prefix_probe_and_no_clobber (test_transfer.TransferTests) ... ok
+test_slow_tail_can_finish_on_fast_path (test_transfer.TransferTests) ... ok
+test_two_relays_and_multiple_paths (test_transfer.TransferTests) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 2.439s
+
+OK

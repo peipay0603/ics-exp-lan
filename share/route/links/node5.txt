@@ -1,0 +1,5 @@
+# src dst Mbps delay_ms iface   (collected on node5 2026-11-16 05:13:49)
+5 1 50 10 eth0
+5 2 10 0 eth1
+5 3 1 5 eth2
+5 4 50 10 eth3

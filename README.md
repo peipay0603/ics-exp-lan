@@ -72,7 +72,7 @@ exit # もしくは Ctrl+D
 - [直通を含む1〜4経路の比較プログラムと実行手順](share/route_compare/README.md)
 - [20MiB予備測定の結果と考察](share/route_compare/reports/START2_SCREEN_RESULTS.md)
 
-比較用プログラムは既存の転送実装と独立して利用できます。測定用の大容量ファイルや実行時ログはGit管理対象から除外しています。
+比較用プログラムは既存の転送実装と独立して利用できます。大容量の転送データはGit対象外とし、共有する測定のCSV・環境記録・生ログは`reports`等へ保存します。
 
 ## 最終課題のTCP版と比較測定
 

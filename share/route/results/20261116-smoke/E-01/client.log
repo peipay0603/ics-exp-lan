@@ -1,0 +1,13 @@
+=== per path ===
+3-4-5-1   172.23.0.50:31101    chunks=  32 ( 50.0%)  25.39 Mbps  used   2.6s  +0/-0  probes=0 dup=6 wasted=3
+3-1       172.21.0.30:31000    chunks=  10 ( 15.6%)   8.71 Mbps  used   2.6s  +0/-0  probes=0 dup=0 wasted=2
+3-4-1     172.22.0.40:31103    chunks=  11 ( 17.2%)   7.98 Mbps  used   2.6s  +0/-0  probes=0 dup=0 wasted=0
+3-2-5-1   172.23.0.50:31104    chunks=  11 ( 17.2%)   7.98 Mbps  used   2.6s  +0/-0  probes=0 dup=1 wasted=0
+=== result ===
+File            : /home/ubuntu/share/route/results/20261116-smoke/E-01/received-e3c7ba063bfa49faa5e695ef22bc4219.dat
+Total bytes     : 16777216 (16.78 MB)
+Received on wire: 18087936 (duplicates 1310720)
+Chunk size      : 256 KiB x 64 chunks, depth 4, 4 paths / 4 connections, adaptive
+Download time   : 2.891 sec
+Throughput      : 46.428 Mbps
+ROUTE_METRICS {"seconds": 2.8921532930107787, "exit": 0, "user_s": 0.011066, "system_s": 0.115585}
