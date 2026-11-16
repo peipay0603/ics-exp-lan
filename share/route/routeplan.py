@@ -207,7 +207,7 @@ def write_scripts(outdir, src, dst, chosen, standby, args, delay, maxcap):
     lines = ["# 使う経路（転送中に速度を測って，遅い経路は外し，予備経路が速ければ使い始める）"]
     for t, p, mbps, sb in client_targets:
         lines.append("#   %s %-34s %s" % ("予備" if sb else "使用", t, fmt_path(p)))
-    lines.append("time -p %s" \"$@\"" % cmd)
+    lines.append("time -p %s \"$@\"" % cmd)
     if len(act) == 1:
         lines.append("# 経路を固定して比較する場合は -S を付ける")
         lines.append("# 実験4-1 の fclient でも同じ経路を通せる（比較用）:")
