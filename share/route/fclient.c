@@ -35,6 +35,7 @@
  */
 #include "common.h"
 #include <pthread.h>
+#include "output_file.h"
 
 #define MAX_PATHS 32
 #define MAX_CONNS 64
@@ -84,6 +85,7 @@ struct conn {
     struct req queue[MAX_DEPTH];
     int    qhead, qcount;
     int    kick;               /* 降格されたので接続を張り直す */
+    int    failed;             /* この接続だけが再試行上限に達した */
 };
 
 /* ---- 共有状態（mu で保護） ---- */
@@ -92,7 +94,7 @@ static pthread_cond_t  cv = PTHREAD_COND_INITIALIZER;
 static struct path paths[MAX_PATHS];
 static struct conn conns[MAX_CONNS];
 static int npath, nconn;
-static long long fsize;
+static long long fsize = -1;
 static long long chunk_size = 256 * 1024;   /* 既定 256 KiB */
 static int  depth = 4;                      /* 既定 4（256KiB×4 = 1MiB を先出し） */
 static double min_mbps = 5.0;               /* これ未満の経路は使わない */
@@ -102,6 +104,8 @@ static int  verbose = 0;
 static int  nchunks, next_todo, todo_left, inflight, written;
 static unsigned char *state, *copies;
 static int  out_fd, finished;
+static int  transfer_error, socket_timeout = 30;
+static volatile sig_atomic_t interrupted;
 static struct timespec t_start;
 
 static double now_sec(void)
@@ -218,16 +222,78 @@ static void give_back(struct conn *c)
 static int do_connect(struct conn *c)
 {
     int one = 1;
-    c->sock = socket(AF_INET, SOCK_STREAM, 0);
-    setsockopt(c->sock, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
-    if (connect(c->sock, (struct sockaddr *)&c->addr, sizeof(c->addr)) < 0) {
-        close(c->sock);
-        c->sock = -1;
-        return -1;
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    struct timeval timeout = { socket_timeout, 0 };
+    char line[REQ_MAX], extra;
+    long long size;
+    if (sock < 0) return -1;
+    setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+    if (connect_timeout(sock, &c->addr, socket_timeout) < 0 ||
+        write_all(sock, "SIZE\r\n", 6) < 0 || read_line(sock, line, sizeof(line)) < 0)
+        goto fail;
+    if (sscanf(line, "SIZE %lld %c", &size, &extra) != 1 || size < 0 ||
+        (fsize >= 0 && size != fsize)) {
+        errno = EPROTO;
+        goto fail;
+    }
+    pthread_mutex_lock(&mu);
+    if (finished || interrupted) { pthread_mutex_unlock(&mu); goto fail; }
+    if (fsize < 0) fsize = size;
+    c->sock = sock;
+    pthread_mutex_unlock(&mu);
+    return 0;
+fail:
+    close(sock);
+    return -1;
+}
+
+static void close_connection(struct conn *c)
+{
+    pthread_mutex_lock(&mu);
+    int sock = c->sock;
+    c->sock = -1;
+    pthread_mutex_unlock(&mu);
+    if (sock >= 0) close(sock);
+}
+
+static int failed_attempt(struct conn *c, int *retries)
+{
+    if (++*retries < 5) return 0;
+    pthread_mutex_lock(&mu);
+    give_back(c);
+    c->failed = 1;
+    int alive = 0;
+    for (int i = 0; i < nconn; i++)
+        if (conns[i].p == c->p && !conns[i].failed) alive++;
+    c->p->nconn = alive;
+    if (!alive) c->p->role = DEAD;
+    fprintf(stderr, "[%6.2fs] connection %s: 5 attempts without a complete chunk, removed\n",
+            now_sec(), c->p->label);
+    pthread_cond_broadcast(&cv);
+    pthread_mutex_unlock(&mu);
+    return -1;
+}
+
+static void on_signal(int signum)
+{
+    (void)signum;
+    interrupted = 1;
+}
+
+static int save_chunk(const char *buf, size_t length, off_t offset)
+{
+    while (length) {
+        ssize_t n = pwrite(out_fd, buf, length, offset);
+        if (n < 0 && errno == EINTR) continue;
+        if (n <= 0) { if (!n) errno = EIO; return -1; }
+        length -= (size_t)n;
+        offset += n;
+        buf += n;
     }
     return 0;
 }
-
 static void *worker(void *arg)
 {
     struct conn *c = arg;
@@ -235,6 +301,14 @@ static void *worker(void *arg)
     char *buf = malloc(chunk_size);
     char reqbuf[MAX_DEPTH * 48];
     int retries = 0;
+
+    if (!buf) {
+        pthread_mutex_lock(&mu);
+        transfer_error = finished = 1;
+        pthread_cond_broadcast(&cv);
+        pthread_mutex_unlock(&mu);
+        return NULL;
+    }
 
     for (;;) {
         pthread_mutex_lock(&mu);
@@ -248,20 +322,10 @@ static void *worker(void *arg)
             c->kick = 0;
             pthread_cond_broadcast(&cv);
             pthread_mutex_unlock(&mu);
-            if (c->sock >= 0) close(c->sock);
-            c->sock = -1;
+            close_connection(c);
             usleep(200000);
             if (do_connect(c) < 0) {
-                if (++retries >= 5) {
-                    pthread_mutex_lock(&mu);
-                    printf("[%6.2fs] path %-8s %s: unreachable, removed\n", now_sec(), p->name, p->label);
-                    p->role = DEAD;
-                    pthread_cond_broadcast(&cv);
-                    pthread_mutex_unlock(&mu);
-                    break;
-                }
-            } else {
-                retries = 0;
+                if (failed_attempt(c, &retries) < 0) break;
             }
             continue;
         }
@@ -317,6 +381,7 @@ static void *worker(void *arg)
             goto broken;
         }
         clock_gettime(CLOCK_MONOTONIC, &te);
+        retries = 0;  /* 接続成功ではなく、チャンクを最後まで受けたときだけリセット */
 
         int mine = 0;
         pthread_mutex_lock(&mu);
@@ -339,9 +404,13 @@ static void *worker(void *arg)
         pthread_mutex_unlock(&mu);
 
         if (mine) {
-            if (pwrite(out_fd, buf, (size_t)len, (off_t)head.k * chunk_size) != len) {
+            if (save_chunk(buf, (size_t)len, (off_t)head.k * chunk_size) < 0) {
                 perror("pwrite");
-                exit(1);
+                pthread_mutex_lock(&mu);
+                transfer_error = finished = 1;
+                pthread_cond_broadcast(&cv);
+                pthread_mutex_unlock(&mu);
+                break;
             }
             pthread_mutex_lock(&mu);
             p->chunks++;
@@ -352,11 +421,15 @@ static void *worker(void *arg)
         continue;
 
     broken:
-        if (verbose && !finished && !c->kick)
+        pthread_mutex_lock(&mu);
+        int intentional = finished || c->kick;
+        pthread_mutex_unlock(&mu);
+        if (verbose && !intentional)
             fprintf(stderr, "[%6.2fs] connection %s closed, reconnecting\n", now_sec(), p->label);
-        close(c->sock);
-        c->sock = -1;
+        close_connection(c);
+        if (!intentional && failed_attempt(c, &retries) < 0) break;
     }
+    close_connection(c);
     free(buf);
     return NULL;
 }
@@ -469,22 +542,44 @@ static void *monitor(void *arg)
 /* "IP:PORT[xN][/dD][@Mbps][=名前]" を読む */
 static void parse_path(const char *s, int role)
 {
-    char spec[160], ip[48], *q;
+    char spec[160], ip[48], *q, *end;
     int port, mult = 1, d = depth;
     double mbps = 0;
     char name[32] = "";
 
+    if (strlen(s) >= sizeof(spec)) { fprintf(stderr, "path too long\n"); exit(1); }
     snprintf(spec, sizeof(spec), "%s", s);
     if ((q = strchr(spec, '=')) != NULL) { *q = '\0'; snprintf(name, sizeof(name), "%s", q + 1); }
-    if ((q = strchr(spec, '@')) != NULL) { *q = '\0'; mbps = atof(q + 1); }
+    if ((q = strchr(spec, '@')) != NULL) {
+        *q = '\0'; errno = 0; mbps = strtod(q + 1, &end);
+        if (errno || end == q + 1 || *end || !isfinite(mbps) || mbps < 0) {
+            fprintf(stderr, "bad rate: %s\n", s); exit(1);
+        }
+    }
     if ((q = strchr(spec, '/')) != NULL) {
         *q = '\0';
-        if (sscanf(q + 1, "d%d", &d) != 1 || d < 1 || d > MAX_DEPTH) {
+        errno = 0;
+        long value = q[1] == 'd' ? strtol(q + 2, &end, 10) : -1;
+        if (q[1] != 'd' || errno || end == q + 2 || *end || value < 1 || value > MAX_DEPTH) {
             fprintf(stderr, "bad depth in %s (1..%d)\n", s, MAX_DEPTH);
             exit(1);
         }
+        d = (int)value;
     }
-    if (sscanf(spec, "%47[^:]:%dx%d", ip, &port, &mult) < 2 || mult < 1) {
+    q = strchr(spec, ':');
+    if (!q || (size_t)(q - spec) >= sizeof(ip)) goto bad_path;
+    *q++ = '\0';
+    snprintf(ip, sizeof(ip), "%s", spec);
+    char *count = strchr(q, 'x');
+    if (count) {
+        *count++ = '\0'; errno = 0;
+        long value = strtol(count, &end, 10);
+        if (errno || end == count || *end || value < 1 || value > MAX_CONNS) goto bad_path;
+        mult = (int)value;
+    }
+    port = valid_port(q);
+    if (port < 0) {
+bad_path:
         fprintf(stderr, "bad path: %s (IP:PORT[xN][/dD][@Mbps][=name])\n", s);
         exit(1);
     }
@@ -518,9 +613,25 @@ static void usage(const char *prog)
 {
     fprintf(stderr,
         "Usage: %s [-o outfile] [-c chunk_KiB] [-d depth] [-m min_Mbps] [-p probe_sec]\n"
-        "          [-S] [-v] [-s standby_path ...] path [path ...]\n"
+        "          [-t timeout_sec] [-S] [-v] [-s standby_path ...] path [path ...]\n"
         "  path = IP:PORT[xN][/dD][@Mbps][=name]\n", prog);
     exit(1);
+}
+
+static long long number(const char *text, long long min, long long max)
+{
+    char *end;
+    errno = 0;
+    long long n = strtoll(text, &end, 10);
+    return errno || end == text || *end || n < min || n > max ? -1 : n;
+}
+
+static double positive_rate(const char *text)
+{
+    char *end;
+    errno = 0;
+    double n = strtod(text, &end);
+    return errno || end == text || *end || !isfinite(n) || n < 0 ? -1 : n;
 }
 
 int main(int argc, char **argv)
@@ -529,58 +640,57 @@ int main(int argc, char **argv)
     char *outfile = "received.dat";
     char *standby[MAX_PATHS];
     int nstandby = 0;
-    char line[REQ_MAX];
     struct timespec t1;
     pthread_t mon;
 
-    while ((opt = getopt(argc, argv, "o:c:d:m:p:s:Sv")) != -1) {
+    while ((opt = getopt(argc, argv, "o:c:d:m:p:t:s:Sv")) != -1) {
         switch (opt) {
         case 'o': outfile = optarg; break;
-        case 'c': chunk_size = atoll(optarg) * 1024; break;
-        case 'd': depth = atoi(optarg); break;
-        case 'm': min_mbps = atof(optarg); break;
-        case 'p': probe_sec = atof(optarg); break;
-        case 's': if (nstandby < MAX_PATHS) standby[nstandby++] = optarg; break;
+        case 'c': chunk_size = number(optarg, 1, 65536) * 1024; break;
+        case 'd': depth = (int)number(optarg, 1, MAX_DEPTH); break;
+        case 'm': min_mbps = positive_rate(optarg); break;
+        case 'p': probe_sec = positive_rate(optarg); break;
+        case 't': socket_timeout = (int)number(optarg, 1, 3600); break;
+        case 's': if (nstandby >= MAX_PATHS) usage(argv[0]); standby[nstandby++] = optarg; break;
         case 'S': adaptive = 0; break;
         case 'v': verbose = 1; break;
         default: usage(argv[0]);
         }
     }
-    if (optind >= argc || chunk_size <= 0 || depth < 1 || depth > MAX_DEPTH) usage(argv[0]);
+    if (optind >= argc || chunk_size <= 0 || depth < 1 || depth > MAX_DEPTH ||
+        min_mbps < 0 || probe_sec <= 0 || socket_timeout < 1) usage(argv[0]);
     for (int i = optind; i < argc; i++) parse_path(argv[i], ACTIVE);
     if (adaptive)                                   /* -S のときは予備経路を使わない */
         for (int i = 0; i < nstandby; i++) parse_path(standby[i], STANDBY);
 
     signal(SIGPIPE, SIG_IGN);
+    signal(SIGINT, on_signal);
+    signal(SIGTERM, on_signal);
     setvbuf(stdout, NULL, _IOLBF, 0);
 
     /* 計測開始：接続の確立（中継の接続も含む）からファイル保存の完了まで */
     clock_gettime(CLOCK_MONOTONIC, &t_start);
 
-    /* STEP 1: すべての経路に接続する（1 本目以外は失敗しても後で張り直す） */
+    /* STEP 1: 各接続でSIZEを確認。先頭が不通でも、到達可能な経路を使う。 */
     for (int i = 0; i < nconn; i++) {
         if (do_connect(&conns[i]) < 0) {
-            if (i == 0) {
-                fprintf(stderr, "connect %s: %s\n", conns[i].p->label, strerror(errno));
-                return 1;
-            }
             fprintf(stderr, "connect %s failed (will retry)\n", conns[i].p->label);
         }
     }
 
-    /* STEP 2: ファイルサイズを問い合わせる */
-    if (write_all(conns[0].sock, "SIZE\r\n", 6) < 0 ||
-        read_line(conns[0].sock, line, sizeof(line)) < 0 ||
-        sscanf(line, "SIZE %lld", &fsize) != 1) {
-        fprintf(stderr, "SIZE request failed\n");
+    if (fsize < 0 || interrupted) {
+        fprintf(stderr, "no path supplied a valid SIZE\n");
         return 1;
     }
-    nchunks = (int)((fsize + chunk_size - 1) / chunk_size);
+    long long count = fsize / chunk_size + (fsize % chunk_size != 0);
+    if (count > INT_MAX) { fprintf(stderr, "too many chunks\n"); return 1; }
+    nchunks = (int)count;
     todo_left = nchunks;
     state  = calloc(nchunks > 0 ? nchunks : 1, 1);
     copies = calloc(nchunks > 0 ? nchunks : 1, 1);
+    if (!state || !copies) { perror("calloc"); return 1; }
 
-    out_fd = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    out_fd = output_open(outfile);
     if (out_fd < 0 || ftruncate(out_fd, fsize) < 0) {
         perror(outfile);
         return 1;
@@ -592,10 +702,28 @@ int main(int argc, char **argv)
         paths[i].since = now_sec();
         paths[i].last_probe = -probe_sec;          /* 予備経路は最初に順番に測る */
     }
-    for (int i = 0; i < nconn; i++)
-        pthread_create(&conns[i].th, NULL, worker, &conns[i]);
-    if (adaptive)
-        pthread_create(&mon, NULL, monitor, NULL);
+    int started = 0, monitoring = 0;
+    for (int i = 0; i < nconn; i++) {
+        int error = pthread_create(&conns[i].th, NULL, worker, &conns[i]);
+        if (error) {
+            fprintf(stderr, "pthread_create: %s\n", strerror(error));
+            pthread_mutex_lock(&mu);
+            transfer_error = finished = 1;
+            pthread_mutex_unlock(&mu);
+            break;
+        }
+        started++;
+    }
+    if (adaptive && started == nconn) {
+        int error = pthread_create(&mon, NULL, monitor, NULL);
+        if (!error) monitoring = 1;
+        else {
+            fprintf(stderr, "pthread_create: %s\n", strerror(error));
+            pthread_mutex_lock(&mu);
+            transfer_error = finished = 1;
+            pthread_mutex_unlock(&mu);
+        }
+    }
 
     /* STEP 4: 全チャンクがファイルに書かれるまで待つ */
     pthread_mutex_lock(&mu);
@@ -603,29 +731,32 @@ int main(int argc, char **argv)
         int alive = 0;
         for (int i = 0; i < npath; i++)
             if (paths[i].role != DEAD) alive = 1;
-        if (finished || !alive) break;
-        pthread_cond_wait(&cv, &mu);
+        if (finished || !alive || interrupted) break;
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_nsec += 100000000;
+        if (ts.tv_nsec >= 1000000000) { ts.tv_sec++; ts.tv_nsec -= 1000000000; }
+        pthread_cond_timedwait(&cv, &mu, &ts);
     }
-    int ok = (written == nchunks);
+    int ok = (written == nchunks && !transfer_error && !interrupted);
     finished = 1;
     double tend = now_sec();
     for (int i = 0; i < npath; i++)
         if (paths[i].role == ACTIVE) paths[i].active_time += tend - paths[i].since;
     pthread_cond_broadcast(&cv);
-    pthread_mutex_unlock(&mu);
-
-    close(out_fd);
-    clock_gettime(CLOCK_MONOTONIC, &t1);
-
-    /* 受信中のスレッドを止める */
+    /* ソケット所有者が閉じる前にshutdown。出力fdは全worker停止まで閉じない。 */
     for (int i = 0; i < nconn; i++)
         if (conns[i].sock >= 0) shutdown(conns[i].sock, SHUT_RDWR);
-    for (int i = 0; i < nconn; i++) pthread_join(conns[i].th, NULL);
-    if (adaptive) pthread_join(mon, NULL);
+    pthread_mutex_unlock(&mu);
+    for (int i = 0; i < started; i++) pthread_join(conns[i].th, NULL);
+    if (monitoring) pthread_join(mon, NULL);
+    for (int i = started; i < nconn; i++) close_connection(&conns[i]);
     if (!ok) {
         fprintf(stderr, "transfer failed: %d / %d chunks\n", written, nchunks);
         return 1;
     }
+    if (output_commit() < 0) { perror("publish output"); return 1; }
+    clock_gettime(CLOCK_MONOTONIC, &t1);
 
     /* STEP 5: 結果の表示 */
     double sec = elapsed_sec(&t_start, &t1);

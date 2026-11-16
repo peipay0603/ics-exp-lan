@@ -25,6 +25,9 @@ routeplan.py -- リンクの調査結果から転送経路を決め，各ノー�
 """
 import argparse
 import glob
+import json
+import math
+import shlex
 import os
 import sys
 from collections import deque
@@ -155,42 +158,34 @@ def fmt_path(p):
 
 
 def write_scripts(outdir, src, dst, chosen, standby, args, delay, maxcap):
-    """chosen: 使う経路 [(path, mbps)]，standby: 予備経路 [path]．各ノード用の起動スクリプトを作る"""
+    """argv形式のplanと、このplanだけを管理する起動・終了スクリプトを生成する。"""
     os.makedirs(outdir, exist_ok=True)
     for fn in glob.glob(os.path.join(outdir, "node*.sh")):
         os.remove(fn)
-    per_node = {}
-    client_targets = []
-    header = ("#!/bin/bash\n# routeplan.py が生成（%s）\n"
-              "cd \"$(dirname \"$0\")/..\"\nmkdir -p logs\n" % " ".join(sys.argv[1:]))
+    per_node, services, client_targets = {}, {}, []
+    root = os.path.dirname(os.path.abspath(__file__))
+    relative_root = os.path.relpath(root, outdir)
+    header = ('#!/bin/bash\nset -euo pipefail\n'
+              'plan_dir=$(cd -- "$(dirname -- "$0")" && pwd)\n'
+              'cd -- "$plan_dir"/' + shlex.quote(relative_root) + '\n')
 
-    per_node.setdefault(src, []).append(
-        "# サーバ\nnohup ./fserver.out %s %d > logs/fserver.log 2>&1 &\n"
-        "echo \"fserver started (pid $!)\"\n" % (args.file, SERVER_PORT))
-
+    services.setdefault(str(src), []).append({
+        "command": ["fserver.out", args.file, str(args.server_port)], "ready": "fserver:"})
     entries = [(p, mbps, False) for p, mbps in chosen] + [(p, 0.0, True) for p in standby]
     for k, (p, mbps, is_standby) in enumerate(entries, 1):
-        port = RELAY_PORT_BASE + k
-        kind = "予備経路" if is_standby else "経路"
-        # データは p[0]→…→p[-1] に流れる．接続は逆向き（クライアント側から順に張る）
-        hops = p[1:-1]
-        for i, node in enumerate(hops):
-            prev_node = p[i]                     # データの上流（接続の次の宛先）
-            next_port = SERVER_PORT if prev_node == src else port
-            per_node.setdefault(node, []).append(
-                "# %s%d %s%s\n"
-                "nohup ./relay.out %d %s %d > logs/relay%d_node%d.log 2>&1 &\n"
-                "echo \"relay %d -> %s:%d started (pid $!)\"\n"
-                % (kind, k, fmt_path(p), "" if is_standby else "（約%.1f Mbps）" % mbps,
-                   port, ip_of(prev_node, node), next_port, k, node,
-                   port, ip_of(prev_node, node), next_port))
+        port = args.relay_port_base + k
+        for i, node in enumerate(p[1:-1]):
+            prev_node = p[i]
+            next_port = args.server_port if prev_node == src else port
+            services.setdefault(str(node), []).append({
+                "command": ["relay.out", str(port), ip_of(prev_node, node), str(next_port)],
+                "ready": "relay:"})
         last_hop = p[-2]
-        target_port = SERVER_PORT if last_hop == src else port
+        target_port = args.server_port if last_hop == src else port
         target = "%s:%d" % (ip_of(last_hop, dst), target_port)
         if args.conns > 1 and not is_standby:
             target += "x%d" % args.conns
-        # 予備経路は速くなったときに備え，リンクの最大帯域で先出し数を決める
-        rate = maxcap if is_standby else mbps / max(1, args.conns)
+        rate = maxcap if is_standby else mbps / args.conns
         dep = depth_for(rate, rtt_ms(p, delay), args)
         if dep != args.depth:
             target += "/d%d" % dep
@@ -199,32 +194,33 @@ def write_scripts(outdir, src, dst, chosen, standby, args, delay, maxcap):
         target += "=" + "-".join(str(x) for x in p)
         client_targets.append((target, p, mbps, is_standby))
 
-    act = [t for t, _, _, sb in client_targets if not sb]
-    sby = ["-s " + t for t, _, _, sb in client_targets if sb]
-    cmd = "./fclient.out -o %s -c %d -d %d -m %g %s%s" % (
-        args.output, args.chunk, args.depth, args.min_mbps,
-        " ".join(sby) + (" " if sby else ""), " ".join(act))
-    lines = ["# 使う経路（転送中に速度を測って，遅い経路は外し，予備経路が速ければ使い始める）"]
-    for t, p, mbps, sb in client_targets:
-        lines.append("#   %s %-34s %s" % ("予備" if sb else "使用", t, fmt_path(p)))
-    lines.append("time -p %s" % cmd)
-    if len(act) == 1:
-        lines.append("# 経路を固定して比較する場合は -S を付ける")
-        lines.append("# 実験4-1 の fclient でも同じ経路を通せる（比較用）:")
-        t = act[0].split("=")[0].split("@")[0].split("/")[0].split("x")[0].split(":")
-        lines.append("#   ../Source/Lab/exp43/fclient.out %s %s %s" % (t[0], t[1], args.output))
-    per_node.setdefault(dst, []).append("\n".join(lines) + "\n")
+    client = ["./fclient.out", "-o", args.output, "-c", str(args.chunk), "-d", str(args.depth),
+              "-m", str(args.min_mbps)]
+    for target, _, _, standby_path in client_targets:
+        if standby_path:
+            client += ["-s", target]
+    client += [target for target, _, _, standby_path in client_targets if not standby_path]
+    cmd = " ".join(shlex.quote(value) for value in client)
+    manifest = {"version": 1, "source": src, "destination": dst, "services": services,
+                "client": client, "chosen": chosen, "standby": standby,
+                "nominal_mbps": sum(rate for _, rate in chosen)}
+    with open(os.path.join(outdir, "plan.json"), "w") as stream:
+        json.dump(manifest, stream, ensure_ascii=False, indent=2)
 
-    for node, body in sorted(per_node.items()):
+    for node in sorted({int(n) for n in services} | {dst}):
+        body = ''
+        if str(node) in services:
+            body += 'python3 services.py start "$plan_dir/plan.json" --node %d\n' % node
+        if node == dst:
+            body += 'time -p ' + cmd + '\n'
+        per_node[node] = body
         fn = os.path.join(outdir, "node%d.sh" % node)
-        with open(fn, "w") as f:
-            f.write(header)
-            f.write("".join(body))
+        with open(fn, "w") as stream:
+            stream.write(header + body)
         os.chmod(fn, 0o755)
     stop = os.path.join(outdir, "stop.sh")
-    with open(stop, "w") as f:
-        f.write("#!/bin/bash\n# このノードで動いている fserver.out / relay.out を止める\n"
-                "pkill -x fserver.out; pkill -x relay.out; exit 0\n")
+    with open(stop, "w") as stream:
+        stream.write(header + 'python3 services.py stop "$plan_dir/plan.json"\n')
     os.chmod(stop, 0o755)
     return per_node, cmd
 
@@ -248,8 +244,16 @@ def main():
     ap.add_argument("--size-mb", type=float, default=100.0, help="所要時間の見積もり用")
     ap.add_argument("--standby-hops", type=int, default=3,
                     help="この数以下のホップの経路を予備経路にする（0 で予備なし）")
+    ap.add_argument("--server-port", type=int, default=SERVER_PORT)
+    ap.add_argument("--relay-port-base", type=int, default=RELAY_PORT_BASE)
     ap.add_argument("--outdir", default=os.path.join(here, "plan"))
     args = ap.parse_args()
+
+    if (not 1 <= args.server_port <= 65535 or not 1 <= args.relay_port_base <= 65500
+            or not 1 <= args.conns <= 64 or not 1 <= args.chunk <= 65536
+            or not 1 <= args.depth <= 64 or not math.isfinite(args.min_mbps)
+            or args.min_mbps < 0 or args.standby_hops < 0):
+        ap.error("invalid port, connection, chunk, depth, or threshold")
 
     files = args.links or sorted(glob.glob(os.path.join(here, "links", "node*.txt")))
     if not files:
@@ -265,6 +269,8 @@ def main():
                                        for v in nodes))
 
     cands = simple_paths(nodes, cap, s, d, args.max_hops)
+    if not cands:
+        ap.error("no path connects source and destination")
     cands.sort(key=lambda p: (-path_stats(p, cap, delay)[0],) + path_stats(p, cap, delay)[1:])
     print("\n== 単一経路の候補 node%d → node%d（ボトルネック帯域の大きい順，上位 8）" % (s, d))
     for p in cands[:8]:
@@ -282,7 +288,7 @@ def main():
         chosen = []
         for spec in args.path.split(","):
             p = [int(x) for x in spec.split("-")]
-            if p[0] != s or p[-1] != d or any(l not in cap for l in zip(p, p[1:])):
+            if len(p) < 2 or len(set(p)) != len(p) or p[0] != s or p[-1] != d or any(l not in cap for l in zip(p, p[1:])):
                 sys.exit("経路 %s は使えません" % spec)
             chosen.append((p, path_stats(p, cap, delay)[0]))
         why = "手で指定"
@@ -292,6 +298,8 @@ def main():
     else:
         chosen = [(p, amt) for p, amt in decomp if amt >= args.min_mbps]
         why = "最大流の分解（%.1f Mbps 以上の経路）" % args.min_mbps
+    if not chosen:
+        ap.error("no path meets --min-mbps")
     rate = sum(m for _, m in chosen)
 
     print("\n== 採用する経路（%s）: 合計 %.1f Mbps → %.0f MB は約 %.1f 秒" % (why, rate, args.size_mb, args.size_mb * 8 / rate))

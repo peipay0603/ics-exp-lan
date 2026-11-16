@@ -10,6 +10,11 @@ PROGS = fserver.out fclient.out relay.out
 
 all: $(PROGS)
 
+fclient.out: output_file.h
+
+test: all
+	python3 -m unittest -v test_transfer test_routeplan test_bench
+
 %.out: %.c common.h
 	$(CC) $(CFLAGS) $< -o $@ $(LDLIBS)
 
@@ -19,4 +24,4 @@ test.dat:
 clean:
 	rm -f $(PROGS)
 
-.PHONY: all clean
+.PHONY: all clean test

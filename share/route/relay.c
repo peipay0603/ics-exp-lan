@@ -29,10 +29,15 @@ static void *pump(void *p)
     char *buf = malloc(RELAY_BUF);
     ssize_t n;
 
-    while ((n = read(a->from, buf, RELAY_BUF)) > 0) {
-        if (write_all(a->to, buf, (size_t)n) < 0) break;
+    if (!buf) { shutdown(a->from, SHUT_RDWR); shutdown(a->to, SHUT_RDWR); return NULL; }
+    for (;;) {
+        n = read(a->from, buf, RELAY_BUF);
+        if (n < 0 && errno == EINTR) continue;
+        if (n <= 0) break;
+        if (write_all(a->to, buf, (size_t)n) < 0) { n = -1; break; }
         a->bytes += n;
     }
+    if (n < 0) { shutdown(a->from, SHUT_RDWR); shutdown(a->to, SHUT_RDWR); }
     shutdown(a->to, SHUT_WR);               /* 相手に EOF を伝える */
     shutdown(a->from, SHUT_RD);
     free(buf);
@@ -46,19 +51,22 @@ static void handle(int csock, struct sockaddr_in *next)
     struct pipe_arg up, down;
     struct timespec t0, t1;
     int one = 1;
+    if (nsock < 0) { perror("socket"); return; }
 
     /* 要求（小さいデータ）を Nagle で待たせない */
     setsockopt(csock, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
     setsockopt(nsock, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
-    if (connect(nsock, (struct sockaddr *)next, sizeof(*next)) < 0) {
+    if (connect_timeout(nsock, next, 30) < 0) {
         perror("connect next hop");
+        close(nsock);
         return;
     }
     clock_gettime(CLOCK_MONOTONIC, &t0);
 
     up.from = csock;   up.to = nsock;   up.bytes = 0;    /* 要求：前段 → 次段 */
     down.from = nsock; down.to = csock; down.bytes = 0;  /* データ：次段 → 前段 */
-    pthread_create(&th, NULL, pump, &up);
+    int error = pthread_create(&th, NULL, pump, &up);
+    if (error) { fprintf(stderr, "pthread_create: %s\n", strerror(error)); close(nsock); return; }
     pump(&down);
     pthread_join(th, NULL);
 
@@ -79,9 +87,11 @@ int main(int argc, char **argv)
         fprintf(stderr, "Usage: %s listen_port next_ip next_port\n", argv[0]);
         return 1;
     }
+    int listen_port = valid_port(argv[1]), next_port = valid_port(argv[3]);
+    if (listen_port < 0 || next_port < 0) { fprintf(stderr, "bad port\n"); return 1; }
     memset(&next, 0, sizeof(next));
     next.sin_family = AF_INET;
-    next.sin_port = htons(atoi(argv[3]));
+    next.sin_port = htons(next_port);
     if (inet_pton(AF_INET, argv[2], &next.sin_addr) != 1) {
         fprintf(stderr, "bad next_ip: %s\n", argv[2]);
         return 1;
@@ -91,10 +101,11 @@ int main(int argc, char **argv)
     signal(SIGCHLD, SIG_IGN);
 
     sock0 = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock0 < 0) { perror("socket"); return 1; }
     setsockopt(sock0, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(atoi(argv[1]));
+    addr.sin_port = htons(listen_port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     if (bind(sock0, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("bind");
@@ -115,7 +126,9 @@ int main(int argc, char **argv)
             perror("accept");
             break;
         }
-        if (fork() == 0) {
+        pid_t child = fork();
+        if (child < 0) perror("fork");
+        if (child == 0) {
             close(sock0);
             handle(sock, &next);
             close(sock);

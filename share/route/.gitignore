@@ -1,0 +1,7 @@
+*.out
+*.dat
+*.part.*
+__pycache__/
+/links/
+/plan/
+/logs/
