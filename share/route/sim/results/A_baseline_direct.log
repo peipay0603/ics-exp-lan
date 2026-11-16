@@ -1,0 +1,6 @@
+=== A_baseline_direct: /tmp/tmp.01mSNpQPZp/fclient43.out 172.21.0.30 10000 received.dat
+Receive BUF_LEN: 1000
+Receive bytes: 104857600
+Receive count: 108989
+Time: 87.710690882 sec
+Goodput: 9563951.573 bps (9.563952 Mbps)

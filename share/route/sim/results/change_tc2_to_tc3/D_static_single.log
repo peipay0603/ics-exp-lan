@@ -1,0 +1,2 @@
+=== D_static_single: ./fclient.out -S -o received.dat 172.23.0.50:20001
+[network changed to tc3 at about 5s]

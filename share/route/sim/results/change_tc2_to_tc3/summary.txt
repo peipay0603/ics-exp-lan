@@ -1,0 +1,5 @@
+file 100 MiB, plan from tc2, network changes to tc3 at t=5s (bandwidth only)
+D_static_single      timeout (> 120 s)
+G_adaptive_single      14.27 s    58.79 Mbps  md5 OK
+E_static_multi         30.31 s    27.67 Mbps  md5 OK
+F_adaptive_multi       13.91 s    60.29 Mbps  md5 OK

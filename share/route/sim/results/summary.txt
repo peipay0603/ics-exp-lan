@@ -1,0 +1,7 @@
+file: test.dat 100 MiB (104857600 bytes), network: tc2 (bandwidth only)
+A_baseline_direct                  wall   87.72 s     9.56 Mbps  md5 OK
+B_route_only_3-4-5-1               wall   17.59 s    47.70 Mbps  md5 OK
+C_program_only_direct              wall   87.75 s     9.55 Mbps  md5 OK
+D_route+program_3-4-5-1            wall   17.68 s    47.43 Mbps  md5 OK
+E_multipath_maxflow                wall   13.12 s    63.93 Mbps  md5 OK
+E2_multipath_incl_1Mbps            wall   12.94 s    64.84 Mbps  md5 OK

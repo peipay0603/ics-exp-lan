@@ -1,0 +1,19 @@
+=== F_adaptive_multi: ./fclient.out -o received.dat -c 256 -d 4 -m 5 -s 172.20.0.20:20005=3-2-1 -s 172.23.0.50:20006=3-5-1 -s 172.22.0.40:20007=3-2-4-1 -s 172.20.0.20:20008=3-4-2-1 -s 172.20.0.20:20009=3-5-2-1 -s 172.22.0.40:20010=3-5-4-1 172.23.0.50:20001@40=3-4-5-1 172.21.0.30:10000@10=3-1 172.22.0.40:20003@10=3-4-1 172.23.0.50:20004@9=3-2-5-1
+=== per path ===
+3-4-5-1   172.23.0.50:20001    chunks= 231 ( 57.8%)  37.11 Mbps  used  13.2s  +0/-0  probes=0 dup=8 wasted=2
+3-1       172.21.0.30:10000    chunks=  58 ( 14.5%)   9.56 Mbps  used  13.2s  +0/-0  probes=0 dup=0 wasted=2
+3-4-1     172.22.0.40:20003    chunks=  57 ( 14.2%)   9.24 Mbps  used  13.2s  +0/-0  probes=0 dup=0 wasted=1
+3-2-5-1   172.23.0.50:20004    chunks=  54 ( 13.5%)   8.76 Mbps  used  13.2s  +0/-0  probes=0 dup=0 wasted=1
+3-2-1     172.20.0.20:20005    chunks=   0 (  0.0%)   0.12 Mbps  used   0.0s  +0/-0  probes=3 dup=0 wasted=0
+3-5-1     172.23.0.50:20006    chunks=   0 (  0.0%)   0.12 Mbps  used   0.0s  +0/-0  probes=3 dup=0 wasted=0
+3-2-4-1   172.22.0.40:20007    chunks=   0 (  0.0%)   0.12 Mbps  used   0.0s  +0/-0  probes=3 dup=0 wasted=0
+3-4-2-1   172.20.0.20:20008    chunks=   0 (  0.0%)   0.12 Mbps  used   0.0s  +0/-0  probes=3 dup=0 wasted=0
+3-5-2-1   172.20.0.20:20009    chunks=   0 (  0.0%)   0.12 Mbps  used   0.0s  +0/-0  probes=3 dup=0 wasted=0
+3-5-4-1   172.22.0.40:20010    chunks=   0 (  0.0%)   0.08 Mbps  used   0.0s  +0/-0  probes=2 dup=0 wasted=0
+=== result ===
+File            : received.dat
+Total bytes     : 104857600 (104.86 MB)
+Received on wire: 107544576 (duplicates 2686976)
+Chunk size      : 256 KiB x 400 chunks, depth 4, 10 paths / 10 connections, adaptive
+Download time   : 13.167 sec
+Throughput      : 63.707 Mbps

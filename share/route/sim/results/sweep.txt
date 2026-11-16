@@ -1,0 +1,10 @@
+# チャンクサイズと先出し数の比較（tc2・遅延なし，100 MiB，最大流の 4 経路）
+# fclient.out [-c KiB] [-d depth] 172.23.0.50:20001 172.21.0.30:10000 172.22.0.40:20003 172.23.0.50:20004
+-c 4096 -d 2   17.602 s  47.66 Mbps  duplicates 12.0 MiB
+-c 1024 -d 4   13.917 s  60.28 Mbps  duplicates  7.0 MiB
+-c 1024 -d 2   13.312 s  63.02 Mbps  duplicates  4.0 MiB
+-c 1024 -d 2 (経路1を2接続)  13.325 s  62.96 Mbps
+-c 256  -d 4   12.920 s  64.93 Mbps  duplicates  1.5 MiB   ← 既定値に採用
+-c 256  -d 2   12.927 s  64.89 Mbps  duplicates  1.0 MiB
+-c 128  -d 8   12.937 s  64.84 Mbps  duplicates  1.6 MiB
+-c 256  -d 2   12.759 s  65.75 Mbps  duplicates  0.75 MiB  (別の回)

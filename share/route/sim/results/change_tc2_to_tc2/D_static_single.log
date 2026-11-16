@@ -1,0 +1,10 @@
+=== D_static_single: ./fclient.out -S -o received.dat 172.23.0.50:20001
+=== per path ===
+-         172.23.0.50:20001    chunks= 400 (100.0%)  47.70 Mbps  used  17.6s  +0/-0  probes=0 dup=0 wasted=0
+=== result ===
+File            : received.dat
+Total bytes     : 104857600 (104.86 MB)
+Received on wire: 104857600 (duplicates 0)
+Chunk size      : 256 KiB x 400 chunks, depth 4, 1 paths / 1 connections, static (-S)
+Download time   : 17.585 sec
+Throughput      : 47.703 Mbps

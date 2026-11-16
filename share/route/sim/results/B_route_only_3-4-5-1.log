@@ -1,0 +1,6 @@
+=== B_route_only_3-4-5-1: /tmp/tmp.01mSNpQPZp/fclient43.out 172.23.0.50 20001 received.dat
+Receive BUF_LEN: 1000
+Receive bytes: 104857600
+Receive count: 108958
+Time: 17.578721566 sec
+Goodput: 47720239.316 bps (47.720239 Mbps)
