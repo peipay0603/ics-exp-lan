@@ -1,7 +1,7 @@
 /*  -*- coding: utf-8-unix; -*-                                     */
 /*  FILENAME     :  tcp_send.c                                      */
 /*  DESCRIPTION  :  TCPでファイルを送る（送信側 node3）             */
-/*  USAGE        :  tcp_send.out [-b BUF_LEN] host port file        */
+/*  USAGE        :  tcp_send.out [-b BUF_LEN] [-t seconds] [-L] host port file */
 /*                                                                  */
 /*  host:port には受信側(tcp_recv.out)か、最初の中継ノードを指定する。 */
 /*  実験4-3との違い:                                                  */
@@ -11,19 +11,22 @@
 /*   - 転送中は何も表示しない                                          */
 
 #include "common.h"
+#include <sys/time.h>
 
 static void usage(const char *prog)
 {
     fprintf(stderr,
-        "Usage: %s [-b BUF_LEN] host port file\n"
-        "  -b  1回のread()/write()の大きさ。例: 1000, 64K, 1M（既定 64K）\n",
+        "Usage: %s [-b BUF_LEN] [-t receipt_timeout] [-L] host port file\n"
+        "  -b  1回のread()/write()の大きさ。例: 1000, 64K, 1M（既定 64K）\n"
+        "  -t  保存完了の返信を待つ秒数（1〜3600、既定30）\n"
+        "  -L  旧形式。保存完了の返信を要求しない\n",
         prog);
 }
 
 int main(int argc, char **argv)
 {
     long buf_len = DEFAULT_BUF_LEN;
-    int opt, port, sock, fd;
+    int opt, port, sock, fd, legacy = 0, receipt_timeout = 30;
     char *buf, *host, *filename;
     struct sockaddr_in serverAddr;
     struct stat st;
@@ -34,13 +37,21 @@ int main(int argc, char **argv)
     ssize_t n;
     double elapsed;
 
-    while((opt = getopt(argc, argv, "b:")) != -1) {
+    while((opt = getopt(argc, argv, "b:t:L")) != -1) {
         if(opt == 'b') {
             buf_len = parse_size(optarg);
             if(buf_len < 1 || buf_len > MAX_BUF_LEN) {
                 fprintf(stderr, "invalid BUF_LEN: %s\n", optarg);
                 return 1;
             }
+        } else if(opt == 't') {
+            receipt_timeout = parse_timeout(optarg);
+            if(receipt_timeout < 0) {
+                fprintf(stderr, "invalid receipt timeout\n");
+                return 1;
+            }
+        } else if(opt == 'L') {
+            legacy = 1;
         } else {
             usage(argv[0]);
             return 1;
@@ -86,7 +97,7 @@ int main(int argc, char **argv)
     }
 
     /* STEP 3: ヘッダを送る（ファイルサイズと開始時刻） */
-    hdr.magic = htonl(TCP_MAGIC);
+    hdr.magic = htonl(legacy ? TCP_MAGIC : TCP_CONFIRMED_MAGIC);
     hdr.buf_len = htonl((uint32_t)buf_len);
     hdr.file_size = htobe64((uint64_t)st.st_size);
     hdr.start_sec = (int64_t)htobe64((uint64_t)start_time.tv_sec);
@@ -102,9 +113,11 @@ int main(int argc, char **argv)
         file_read_count++;
         while(sent < n) {
             ssize_t count = write(sock, buf + sent, (size_t)(n - sent));
-            if(count < 0) {
-                if(errno == EINTR)
+            if(count <= 0) {
+                if(count < 0 && errno == EINTR)
                     continue;
+                if(count == 0)
+                    errno = EIO;
                 perror("write socket");
                 return 1;
             }
@@ -118,25 +131,46 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    /* STEP 5: 閉じる（未送信分はOSがこの後も送り続ける） */
+    /* STEP 5: 送信終了を通知。受信側が保存したという返信までは成功としない。 */
     close(fd);
-    if(close(sock) < 0)
-        perror("close socket");
+    if(shutdown(sock, SHUT_WR) < 0) {
+        perror("shutdown socket");
+        return 1;
+    }
+    if(total_bytes != (unsigned long long)st.st_size) {
+        fprintf(stderr, "file size changed while sending\n");
+        return 1;
+    }
+    if(!legacy) {
+        struct tcp_receipt receipt;
+        struct timeval timeout = {receipt_timeout, 0};
+        if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+            perror("set receipt timeout");
+            return 1;
+        }
+        if(read_all(sock, &receipt, sizeof(receipt)) != 0) {
+            fprintf(stderr, "receiver did not confirm saved file (closed or timed out)\n");
+            return 1;
+        }
+        if(ntohl(receipt.magic) != TCP_RECEIPT_MAGIC || ntohl(receipt.status) != 0
+           || be64toh(receipt.file_size) != total_bytes) {
+            fprintf(stderr, "receiver reported incomplete transfer or save failure\n");
+            return 1;
+        }
+    }
+    close(sock);
     clock_gettime(CLOCK_REALTIME, &end_time);
     elapsed = ts_diff(&start_time, &end_time);
-
-    if(total_bytes != (unsigned long long)st.st_size)
-        fprintf(stderr, "warning: file size changed while sending\n");
     printf("Send BUF_LEN: %ld\n", buf_len);
     printf("Send bytes: %llu\n", total_bytes);
     printf("File read count: %lu\n", file_read_count);
     printf("Send count: %lu\n", send_count);
-    printf("Time (送信側でwriteし終えるまで・参考値): %.6f sec\n", elapsed);
+    printf("Time (%s): %.6f sec\n", legacy ? "送信側write完了・参考値" : "受信側の保存完了確認まで", elapsed);
     printf("CPU time (user+sys): %.6f sec\n", cpu_seconds());
     printf("RESULT prog=tcp_send buf_len=%ld bytes=%llu reads=%lu writes=%lu"
-           " time=%.6f cpu=%.6f\n",
+           " time=%.6f cpu=%.6f confirmed=%d\n",
            buf_len, total_bytes, file_read_count, send_count,
-           elapsed, cpu_seconds());
+           elapsed, cpu_seconds(), !legacy);
     free(buf);
     return 0;
 }

@@ -1,0 +1,8 @@
+{
+  "source": "/Users/kumpei/Cords/ics-exp-lan/share/results/20261109-full/final.dat",
+  "source_container": "/home/ubuntu/share/results/20261109-full/final.dat",
+  "sha256": "e3f8e531d385ce13d2e7b2260059767eb27368f44949cf0ac218bb3ab816833f",
+  "source_node": "node3",
+  "destination_node": "node1",
+  "network": "existing tc1; unchanged"
+}

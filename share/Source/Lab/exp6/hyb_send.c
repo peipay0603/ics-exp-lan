@@ -21,6 +21,7 @@
 #include "common.h"
 #include <sys/uio.h>
 #include <sys/prctl.h>
+#include <math.h>
 
 #define MAX_PATHS   8
 #define BURST_NS    2000000ull  /* 遅れを取り戻すための連続送信は2ms分まで */
@@ -76,7 +77,8 @@ static int open_path(const char *spec, struct path *p)
     *colon = '\0';
     port = parse_port(colon + 1);
     p->mbps = strtod(at + 1, &end);
-    if(port < 0 || *end != '\0' || p->mbps < 0.1 || p->mbps > 10000)
+    if(port < 0 || end == at + 1 || *end != '\0' || !isfinite(p->mbps)
+       || p->mbps < 0.1 || p->mbps > 10000)
         return -1;
     if(make_addr(tmp, port, &addr) < 0)
         return -1;
@@ -229,13 +231,17 @@ int main(int argc, char **argv)
                 return 1;
             }
             break;
-        case 'm':
-            max_rounds = strtoul(optarg, NULL, 10);
-            if(max_rounds < 1) {
+        case 'm': {
+            char *end;
+            errno = 0;
+            max_rounds = strtoul(optarg, &end, 10);
+            if(errno || end == optarg || *end || optarg[0] == '-'
+               || max_rounds < 1 || max_rounds > UINT32_MAX) {
                 fprintf(stderr, "invalid max_rounds\n");
                 return 1;
             }
             break;
+        }
         default:
             usage(argv[0]);
             return 1;

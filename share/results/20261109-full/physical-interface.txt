@@ -1,0 +1,2 @@
+en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+	inet 10.10.24.86 netmask 0xffff0000 broadcast 10.10.255.255

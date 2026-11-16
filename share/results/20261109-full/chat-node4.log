@@ -1,0 +1,9 @@
+ip address: 172.27.0.30
+port#: 10045
+Send 7 bytes data: join-A
+Recv 7 bytes data: join-A
+Recv 7 bytes data: join-B
+Send 16 bytes data: chat-from-node4
+Recv 16 bytes data: chat-from-node4
+Send 5 bytes data: quit
+Recv 5 bytes data: quit

@@ -88,6 +88,12 @@ int main(int argc, char **argv) {
      * (必ずしも全部使い切る必要はない)
      */
     uint8_t *packet = malloc(MAX_PACKET_SIZE);
+    if(packet == NULL) {
+        perror("malloc");
+        close(s);
+        return 1;
+    }
+    memset(packet, 0, MAX_PACKET_SIZE);
 
     /**
      * 穴埋め: 以下のIPヘッダ部を正しく埋めよ
@@ -97,11 +103,11 @@ int main(int argc, char **argv) {
      * ip_p: Protocol
      */
     struct ip *ipHeader = (struct ip *)packet;
-    ipHeader->ip_v = XXX;
-    ipHeader->ip_hl = XXX;
+    ipHeader->ip_v = 4;
+    ipHeader->ip_hl = sizeof(struct ip) / 4;
     ipHeader->ip_tos = 0;
     ipHeader->ip_id = 0;
-    ipHeader->ip_ttl = XXX;
+    ipHeader->ip_ttl = 64;
     ipHeader->ip_p = IPPROTO_UDP;
     ipHeader->ip_src.s_addr = srcIp;
     ipHeader->ip_dst.s_addr = dstIp;
@@ -112,8 +118,8 @@ int main(int argc, char **argv) {
      * dest: 送信先ポート
      */
     struct udphdr *udpHeader = (struct udphdr *)(packet + sizeof(struct ip));
-    udpHeader->source = XXX;
-    udpHeader->dest = XXX;
+    udpHeader->source = htons(10000);
+    udpHeader->dest = htons(10000);
     udpHeader->check = 0;
 
     uint8_t *payload = packet + sizeof(struct ip) + sizeof(struct udphdr);
@@ -133,7 +139,7 @@ int main(int argc, char **argv) {
          * 受け取った文字数に応じてTotal Lengthを設定
          */
         size_t totalLength = sizeof(struct ip) + sizeof(struct udphdr) + len;
-        if (totalLength > MAX_PACKET_SIZE) {
+        if (totalLength > 65535 || totalLength > MAX_PACKET_SIZE) {
             printf("文字が多すぎてパケットの最大容量を超えました\n");
             continue;
         }
@@ -144,14 +150,16 @@ int main(int argc, char **argv) {
          * 穴埋め: ip_len = IPパケット全体の長さ、Total Lengthとなっている。正しく埋めよ
          * (ip_sumはチェックサム)
          */
-        ipHeader->ip_len = XXX;
+        ipHeader->ip_len = htons(totalLength);
+        ipHeader->ip_sum = 0;
         ipHeader->ip_sum = checksum(ipHeader, sizeof(struct ip));
 
         /**
          * 穴埋め: len = UDPヘッダ+ペイロードの長さ、となっている。正しく埋めよ
          * (checkはチェックサム)
          */
-        udpHeader->len = XXX;
+        udpHeader->len = htons(sizeof(struct udphdr) + len);
+        udpHeader->check = 0;
         udpHeader->check = udpChecksum(packet);
 
         /**

@@ -1,0 +1,68 @@
+-----------------------------------------------------------
+Server listening on 15201
+-----------------------------------------------------------
+Accepted connection from 172.20.0.20, port 39372
+[  5] local 172.20.0.10 port 15201 connected to 172.20.0.20 port 39384
+[ ID] Interval           Transfer     Bandwidth
+[  5]   0.00-1.00   sec   122 KBytes   996 Kbits/sec                  
+[  5]   1.00-2.00   sec   116 KBytes   949 Kbits/sec                  
+[  5]   2.00-3.00   sec   117 KBytes   962 Kbits/sec                  
+[  5]   3.00-4.00   sec   116 KBytes   949 Kbits/sec                  
+[  5]   4.00-5.00   sec   117 KBytes   962 Kbits/sec                  
+[  5]   5.00-5.80   sec  91.9 KBytes   938 Kbits/sec                  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bandwidth
+[  5]   0.00-5.80   sec  0.00 Bytes  0.00 bits/sec                  sender
+[  5]   0.00-5.80   sec   680 KBytes   960 Kbits/sec                  receiver
+-----------------------------------------------------------
+Server listening on 15201
+-----------------------------------------------------------
+Accepted connection from 172.20.0.20, port 42672
+[  5] local 172.20.0.10 port 15201 connected to 172.20.0.20 port 42686
+[ ID] Interval           Transfer     Bandwidth       Retr  Cwnd
+[  5]   0.00-1.01   sec   247 KBytes  2.02 Mbits/sec    0   55.1 KBytes       
+[  5]   1.01-2.00   sec   170 KBytes  1.39 Mbits/sec    0   60.8 KBytes       
+[  5]   2.00-3.00   sec  79.2 KBytes   648 Kbits/sec    0   66.5 KBytes       
+[  5]   3.00-4.00   sec   214 KBytes  1.75 Mbits/sec    0   73.5 KBytes       
+[  5]   4.00-5.00   sec   127 KBytes  1.04 Mbits/sec    0   93.3 KBytes       
+[  5]   5.00-5.25   sec  0.00 Bytes  0.00 bits/sec    0   99.0 KBytes       
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bandwidth       Retr
+[  5]   0.00-5.25   sec   837 KBytes  1.31 Mbits/sec    0             sender
+[  5]   0.00-5.25   sec  0.00 Bytes  0.00 bits/sec                  receiver
+-----------------------------------------------------------
+Server listening on 15201
+-----------------------------------------------------------
+Accepted connection from 172.21.0.30, port 37648
+[  5] local 172.21.0.10 port 15201 connected to 172.21.0.30 port 37650
+[ ID] Interval           Transfer     Bandwidth
+[  5]   0.00-1.00   sec   119 KBytes   972 Kbits/sec                  
+[  5]   1.00-2.00   sec   117 KBytes   959 Kbits/sec                  
+[  5]   2.00-3.00   sec   119 KBytes   976 Kbits/sec                  
+[  5]   3.00-4.00   sec   116 KBytes   949 Kbits/sec                  
+[  5]   4.00-5.00   sec   116 KBytes   949 Kbits/sec                  
+[  5]   5.00-5.79   sec  91.9 KBytes   950 Kbits/sec                  
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bandwidth
+[  5]   0.00-5.79   sec  0.00 Bytes  0.00 bits/sec                  sender
+[  5]   0.00-5.79   sec   679 KBytes   960 Kbits/sec                  receiver
+-----------------------------------------------------------
+Server listening on 15201
+-----------------------------------------------------------
+Accepted connection from 172.21.0.30, port 37660
+[  5] local 172.21.0.10 port 15201 connected to 172.21.0.30 port 37662
+[ ID] Interval           Transfer     Bandwidth       Retr  Cwnd
+[  5]   0.00-1.01   sec   247 KBytes  2.02 Mbits/sec    0   55.1 KBytes       
+[  5]   1.01-2.00   sec   170 KBytes  1.39 Mbits/sec    0   60.8 KBytes       
+[  5]   2.00-3.00   sec  77.8 KBytes   637 Kbits/sec    0   66.5 KBytes       
+[  5]   3.00-4.01   sec   215 KBytes  1.76 Mbits/sec    0   73.5 KBytes       
+[  5]   4.01-5.01   sec   129 KBytes  1.05 Mbits/sec    0   93.3 KBytes       
+[  5]   5.01-5.20   sec  0.00 Bytes  0.00 bits/sec    0   97.6 KBytes       
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bandwidth       Retr
+[  5]   0.00-5.20   sec   839 KBytes  1.32 Mbits/sec    0             sender
+[  5]   0.00-5.20   sec  0.00 Bytes  0.00 bits/sec                  receiver
+-----------------------------------------------------------
+Server listening on 15201
+-----------------------------------------------------------
+iperf3: interrupt - the server has terminated

@@ -1,0 +1,1 @@
+transfer shorter than MIN_SECONDS=100.0

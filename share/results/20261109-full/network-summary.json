@@ -1,0 +1,283 @@
+{
+  "exp43": [
+    {
+      "condition": "normal",
+      "send_buf": 1000,
+      "receive_buf": 1000,
+      "wait_us": 0,
+      "bytes": 1048576,
+      "seconds": 0.201350208,
+      "goodput_mbps": 41.66178,
+      "send_count": 1049,
+      "receive_count": 1169,
+      "captured_packets": 483,
+      "tcp_lengths": [
+        [
+          0,
+          201
+        ],
+        [
+          1448,
+          196
+        ],
+        [
+          8688,
+          28
+        ],
+        [
+          2896,
+          8
+        ],
+        [
+          5792,
+          8
+        ],
+        [
+          7240,
+          8
+        ],
+        [
+          14480,
+          7
+        ],
+        [
+          4344,
+          6
+        ]
+      ],
+      "raw_window_min": 62,
+      "raw_window_max": 65160,
+      "cmp": true
+    },
+    {
+      "condition": "small",
+      "send_buf": 100,
+      "receive_buf": 1000,
+      "wait_us": 0,
+      "bytes": 1048576,
+      "seconds": 0.197959208,
+      "goodput_mbps": 42.375437,
+      "send_count": 10486,
+      "receive_count": 1129,
+      "captured_packets": 314,
+      "tcp_lengths": [
+        [
+          0,
+          155
+        ],
+        [
+          7240,
+          89
+        ],
+        [
+          1448,
+          17
+        ],
+        [
+          10136,
+          15
+        ],
+        [
+          2896,
+          11
+        ],
+        [
+          5792,
+          10
+        ],
+        [
+          8688,
+          7
+        ],
+        [
+          4344,
+          3
+        ]
+      ],
+      "raw_window_min": 63,
+      "raw_window_max": 65160,
+      "cmp": true
+    },
+    {
+      "condition": "tiny",
+      "send_buf": 10,
+      "receive_buf": 1000,
+      "wait_us": 0,
+      "bytes": 1048576,
+      "seconds": 0.199307042,
+      "goodput_mbps": 42.088869,
+      "send_count": 104858,
+      "receive_count": 1157,
+      "captured_packets": 429,
+      "tcp_lengths": [
+        [
+          0,
+          190
+        ],
+        [
+          1448,
+          151
+        ],
+        [
+          11584,
+          22
+        ],
+        [
+          8688,
+          18
+        ],
+        [
+          10136,
+          10
+        ],
+        [
+          2896,
+          9
+        ],
+        [
+          5792,
+          5
+        ],
+        [
+          4344,
+          4
+        ]
+      ],
+      "raw_window_min": 63,
+      "raw_window_max": 65160,
+      "cmp": true
+    },
+    {
+      "condition": "slow",
+      "send_buf": 1000,
+      "receive_buf": 1000,
+      "wait_us": 1000,
+      "bytes": 1048576,
+      "seconds": 1.517442668,
+      "goodput_mbps": 5.528122,
+      "send_count": 1049,
+      "receive_count": 1049,
+      "captured_packets": 555,
+      "tcp_lengths": [
+        [
+          0,
+          260
+        ],
+        [
+          1448,
+          207
+        ],
+        [
+          2896,
+          11
+        ],
+        [
+          5792,
+          11
+        ],
+        [
+          7240,
+          11
+        ],
+        [
+          8688,
+          7
+        ],
+        [
+          14480,
+          7
+        ],
+        [
+          4344,
+          6
+        ]
+      ],
+      "raw_window_min": 1,
+      "raw_window_max": 65160,
+      "cmp": true
+    }
+  ],
+  "exp44": "one stdin message; two independent replies displayed; quit exits",
+  "exp45": "two registered clients receive broadcasts without another input; quitting one leaves the other active",
+  "ping": {
+    "node1-self": 0.075,
+    "node1-node2": 12.058,
+    "node1-node3": 11.466,
+    "node3-node4": 12.141
+  },
+  "iperf": [
+    {
+      "client": "node2",
+      "reverse": false,
+      "receiver_mbps": 1.334986661215,
+      "sender_mbps": 1.89653785869,
+      "test_seconds": 10,
+      "omit_seconds": 2
+    },
+    {
+      "client": "node2",
+      "reverse": true,
+      "receiver_mbps": 1.3735034333240002,
+      "sender_mbps": 1.5945960276289999,
+      "test_seconds": 10,
+      "omit_seconds": 2
+    },
+    {
+      "client": "node3",
+      "reverse": false,
+      "receiver_mbps": 1.334423541462,
+      "sender_mbps": 1.897383473016,
+      "test_seconds": 10,
+      "omit_seconds": 2
+    },
+    {
+      "client": "node3",
+      "reverse": true,
+      "receiver_mbps": 1.373368737144,
+      "sender_mbps": 1.595597557671,
+      "test_seconds": 10,
+      "omit_seconds": 2
+    }
+  ],
+  "exp23": {
+    "ip_version": 4,
+    "ihl_words": 5,
+    "ip_header_bytes": 20,
+    "ip_total_length": 32,
+    "ttl": 64,
+    "protocol": 17,
+    "source_ip": "172.20.0.20",
+    "dest_ip": "172.20.0.10",
+    "source_port": 10002,
+    "dest_port": 10000,
+    "udp_length": 12,
+    "payload_hex": "6162630a",
+    "ip_hex": "450000206bca4000401176bcac140014ac14000a27122710000c58646162630a"
+  },
+  "exp5": "two Raw UDP packets received; both UDP checksums verified at node2",
+  "exp42_rtt_ms": 10.87,
+  "iperf_initial_5sec": [
+    {
+      "client": "node2",
+      "reverse": false,
+      "receiver_mbps": 1.113540475047
+    },
+    {
+      "client": "node2",
+      "reverse": true,
+      "receiver_mbps": 1.2214320313520002
+    },
+    {
+      "client": "node3",
+      "reverse": false,
+      "receiver_mbps": 1.111206573129
+    },
+    {
+      "client": "node3",
+      "reverse": true,
+      "receiver_mbps": 1.212018362397
+    }
+  ],
+  "exp33": "node3-node4 TCP echo passed",
+  "exp41": "node3-node4 1MiB file matched"
+}

@@ -1,0 +1,5 @@
+Receive BUF_LEN: 1000
+Receive bytes: 1048576
+Receive count: 1157
+Time: 0.199307042 sec
+Goodput: 42088869.093 bps (42.088869 Mbps)

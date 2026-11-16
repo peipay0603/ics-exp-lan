@@ -1,0 +1,2 @@
+udp relay: port 24102 -> 172.22.0.10:24100, rcvbuf=8388608 bytes
+forwarded 186860 datagrams (275057920 bytes), send refused 0

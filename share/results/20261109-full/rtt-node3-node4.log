@@ -1,0 +1,6 @@
+ip address: 172.27.0.30
+port#: 10000
+Send 9 bytes data: node-rtt
+Recv 9 bytes data: node-rtt
+
+RTT: 10.870 ms

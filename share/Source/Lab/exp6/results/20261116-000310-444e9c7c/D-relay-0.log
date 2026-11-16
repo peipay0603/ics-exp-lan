@@ -1,0 +1,4 @@
+tcp relay: port 24100 -> 172.23.0.10:24100 BUF_LEN=65536
+RESULT prog=tcp_relay buf_len=65536 bytes=16777248 status=FORWARDED
+RESULT prog=tcp_relay buf_len=65536 bytes=16777248 status=FORWARDED
+RESULT prog=tcp_relay buf_len=65536 bytes=16777248 status=FORWARDED

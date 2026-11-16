@@ -21,6 +21,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <signal.h>
+#include <limits.h>
 #include <endian.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -42,6 +43,15 @@
 /* ファイル本体の前に1回だけ送る。値はすべてネットワークバイトオーダ。
    中継（relay）はバイト列をそのまま流すだけなので、このヘッダも素通りする。 */
 #define TCP_MAGIC           0x45365443u     /* "E6TC" */
+#define TCP_CONFIRMED_MAGIC 0x45365432u     /* "E6T2": 保存完了の返信を要求 */
+#define TCP_RECEIPT_MAGIC   0x4536414bu     /* "E6AK" */
+
+struct tcp_receipt {
+    uint32_t magic;
+    uint32_t status;        /* 0: 保存完了。その他: 受信・保存失敗 */
+    uint64_t file_size;
+};
+_Static_assert(sizeof(struct tcp_receipt) == 16, "tcp_receipt must be 16 bytes");
 
 struct tcp_hdr {
     uint32_t magic;
@@ -163,25 +173,45 @@ static inline int read_all(int fd, void *buf, size_t len)
     return 0;
 }
 
+/* UDPの順不同保存でも短い書き込み・割込みを処理してから受信済みにする。 */
+static inline int pwrite_all(int fd, const void *buf, size_t len, off_t offset)
+{
+    const char *p = buf;
+    while(len > 0) {
+        ssize_t n = pwrite(fd, p, len, offset);
+        if(n < 0 && errno == EINTR)
+            continue;
+        if(n <= 0) {
+            if(n == 0)
+                errno = EIO;
+            return -1;
+        }
+        p += n;
+        offset += n;
+        len -= (size_t)n;
+    }
+    return 0;
+}
+
 /* "1000" "64K" "1M" をバイト数にする。不正なら -1 */
 static inline long parse_size(const char *s)
 {
     char *end;
-    long v;
+    long v, scale = 1;
     errno = 0;
     v = strtol(s, &end, 10);
     if(errno != 0 || end == s || v <= 0)
         return -1;
     if(*end == 'k' || *end == 'K') {
-        v *= 1024;
+        scale = 1024;
         end++;
     } else if(*end == 'm' || *end == 'M') {
-        v *= 1024 * 1024;
+        scale = 1024 * 1024;
         end++;
     }
-    if(*end != '\0')
+    if(*end != '\0' || v > LONG_MAX / scale)
         return -1;
-    return v;
+    return v * scale;
 }
 
 /* ポート番号。不正なら -1 */
@@ -194,6 +224,22 @@ static inline int parse_port(const char *s)
     if(errno != 0 || end == s || *end != '\0' || v < 1 || v > 65535)
         return -1;
     return (int)v;
+}
+
+/* 待ち時間は1秒〜1時間。末尾の文字や桁あふれを許さない。 */
+static inline int parse_timeout(const char *s)
+{
+    int value = parse_port(s);
+    return value >= 1 && value <= 3600 ? value : -1;
+}
+
+static inline int send_receipt(int sock, uint32_t status, uint64_t bytes)
+{
+    struct tcp_receipt receipt;
+    receipt.magic = htonl(TCP_RECEIPT_MAGIC);
+    receipt.status = htonl(status);
+    receipt.file_size = htobe64(bytes);
+    return write_all(sock, &receipt, sizeof(receipt));
 }
 
 /* ホスト名またはIPアドレスとポートから宛先アドレスを作る。成功 0 */

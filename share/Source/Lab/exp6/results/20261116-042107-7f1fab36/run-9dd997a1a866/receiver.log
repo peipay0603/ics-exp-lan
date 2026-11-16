@@ -1,0 +1,9 @@
+waiting connection... port=24970 (TCP control + UDP data), UDP rcvbuf=8388608 bytes
+warning: round 1 で新しいデータが1つも届いていません（UDPの宛先・中継を確認してください）
+warning: round 2 で新しいデータが1つも届いていません（UDPの宛先・中継を確認してください）
+warning: round 3 で新しいデータが1つも届いていません（UDPの宛先・中継を確認してください）
+warning: round 4 で新しいデータが1つも届いていません（UDPの宛先・中継を確認してください）
+warning: round 5 で新しいデータが1つも届いていません（UDPの宛先・中継を確認してください）
+warning: round 6 で新しいデータが1つも届いていません（UDPの宛先・中継を確認してください）
+warning: round 7 で新しいデータが1つも届いていません（UDPの宛先・中継を確認してください）
+warning: round 8 で新しいデータが1つも届いていません（UDPの宛先・中継を確認してください）

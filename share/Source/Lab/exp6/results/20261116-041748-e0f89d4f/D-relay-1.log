@@ -1,0 +1,4 @@
+tcp relay: port 24200 -> 172.29.0.50:24200 BUF_LEN=65536 idle_timeout=30
+RESULT prog=tcp_relay buf_len=65536 bytes=16777248 reply_bytes=16 status=FORWARDED
+RESULT prog=tcp_relay buf_len=65536 bytes=16777248 reply_bytes=16 status=FORWARDED
+RESULT prog=tcp_relay buf_len=65536 bytes=16777248 reply_bytes=16 status=FORWARDED

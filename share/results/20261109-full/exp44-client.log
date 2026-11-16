@@ -1,0 +1,6 @@
+ip address: 172.27.0.30
+port#: 10044
+Send 10 bytes data: one-input
+Recv 12 bytes data: first-reply
+Recv 21 bytes data: second-without-input
+Recv 5 bytes data: quit

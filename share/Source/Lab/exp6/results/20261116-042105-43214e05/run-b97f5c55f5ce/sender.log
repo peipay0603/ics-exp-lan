@@ -1,0 +1,7 @@
+Send BUF_LEN: 1000
+Send bytes: 4097
+File read count: 5
+Send count: 5
+Time (受信側の保存完了確認まで): 0.011457 sec
+CPU time (user+sys): 0.000500 sec
+RESULT prog=tcp_send buf_len=1000 bytes=4097 reads=5 writes=5 time=0.011457 cpu=0.000501 confirmed=1
