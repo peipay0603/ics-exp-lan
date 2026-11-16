@@ -12,6 +12,7 @@ import shlex
 import signal
 import subprocess
 import sys
+import threading
 import time
 import uuid
 
@@ -152,8 +153,30 @@ def snapshot(directory, check_tc2=False):
         raise ValueError('tc2 does not match. Run make tc2 at the repository root.\n' + '\n'.join(problems))
 
 
-def run_condition(mode, destination, params, directory, csv_path, label='', relay_buf=''):
+def switch_tc(profile):
+    """switch_tc.sh で5ノードの回線設定を tcN に入れ直す。"""
+    r = subprocess.run([str(HERE / 'switch_tc.sh'), str(profile)],
+                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
+    if r.returncode:
+        raise RuntimeError('switch_tc.sh %s failed: %s' % (profile, r.stdout.decode(errors='replace')))
+
+
+def net_change():
+    """NET_CHANGE=秒:N なら、送信開始からその秒数で回線設定を tcN に変える。"""
+    value = os.environ.get('NET_CHANGE', '')
+    if not value:
+        return None
+    seconds, sep, profile = value.partition(':')
+    if not sep or profile not in ('1', '2', '3', '4') or not math.isfinite(float(seconds)) or float(seconds) < 0:
+        raise ValueError('NET_CHANGE must be SECONDS:PROFILE (e.g. 5:3)')
+    return float(seconds), profile
+
+
+def run_condition(mode, destination, params, directory, csv_path, label='', relay_buf='', extra_send=()):
     repeat, timeout, port = positive_env('REPEAT', 3), positive_env('TIMEOUT', 900), positive_env('PORT', 20000)
+    change = net_change()
+    if change:
+        label = '%s(tc%s@%gs)' % (label or mode, change[1], change[0])
     if port > 65533:
         raise ValueError('PORT must be <= 65533')
     source = (HERE / os.environ.get('FILE', 'test100M.dat')).resolve()
@@ -171,7 +194,8 @@ def run_condition(mode, destination, params, directory, csv_path, label='', rela
             attempt = directory / ('run-' + uuid.uuid4().hex[:12])
             attempt.mkdir()
             output = '/tmp/exp6-recv-' + uuid.uuid4().hex + '.dat'
-            receiver = sender = None
+            receiver = sender = timer = None
+            switched = []
             row = dict.fromkeys(FIELDS, '')
             row.update(datetime=datetime.now().astimezone().isoformat(), mode=mode, dest=destination,
                        param=param, run=iteration, label=label, status='ERROR', cmp='NOT_RUN',
@@ -182,14 +206,21 @@ def run_condition(mode, destination, params, directory, csv_path, label='', rela
                     send_args = ['-b', param] + send_options + [host, dest_port if sep else str(port), remote_source]
                     recv_args = ['-b', param] + recv_options + [str(port), output]
                 else:
-                    send_args = send_options + ['-c', param, os.environ.get('CTRL', '172.21.0.10'),
-                                                str(port), remote_source] + shlex.split(destination)
+                    send_args = list(extra_send) + send_options + [
+                        '-c', param, os.environ.get('CTRL', '172.21.0.10'),
+                        str(port), remote_source] + shlex.split(destination)
                     recv_args = recv_options + [str(port), output]
                 receiver = Job('node1', [REMOTE + '/' + mode + '_recv.out'] + recv_args,
                                attempt / 'receiver.log', timeout)
                 receiver.ready('waiting connection')
                 sender = Job('node3', [REMOTE + '/' + mode + '_send.out'] + send_args,
                              attempt / 'sender.log', timeout)
+                if change:
+                    def apply_change():
+                        switch_tc(change[1])
+                        switched.append(time.monotonic())
+                    timer = threading.Timer(change[0], apply_change)
+                    timer.start()
                 row['sender_exit'] = sender.wait(timeout + 10)
                 if row['sender_exit'] != 0:
                     raise RuntimeError('sender failed: ' + str(row['sender_exit']))
@@ -217,14 +248,22 @@ def run_condition(mode, destination, params, directory, csv_path, label='', rela
                 if duration < minimum:
                     row['status'] = 'TOO_SHORT'
                     raise ValueError('transfer shorter than MIN_SECONDS=' + str(minimum))
+                if change and not switched:
+                    row['status'] = 'NO_CHANGE'
+                    raise ValueError('transfer finished before NET_CHANGE was applied')
                 row['status'] = 'OK'
             except (OSError, KeyError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
                 (attempt / 'error.txt').write_text(str(exc) + '\n')
                 print('FAILED: %s (%s)' % (exc, attempt), file=sys.stderr, flush=True)
             finally:
+                if timer:
+                    timer.cancel()
+                    timer.join()
                 for job in (sender, receiver):
                     if job:
                         job.close()
+                if change:
+                    switch_tc(2)    # 次の測定のために tc2 に戻す（キューに残ったものも消える）
                 if receiver:
                     row['receiver_exit'] = receiver.process.returncode
                 docker('node1', 'sh', '-c', 'rm -f -- "$1" "$1".part.*', 'exp6-clean', output)
@@ -244,33 +283,48 @@ def suite(cases, directory, csv_path):
         'H': ('hyb', '172.27.0.40:%d@50' % port, '1464', ''),
         'E': ('hyb', ('172.27.0.40:%d@40 172.21.0.10:%d@9.5 '
                       '172.27.0.40:%d@10 172.24.0.20:%d@9.5') % (port, port, port + 2, port), '1464', ''),
+        # R: 候補6経路（3→1, 3→4→1, 3→4→5→1, 3→2→1, 3→2→5→1, 3→5→1）をすべて5Mbpsから始め、
+        #    受信状況を見てレートを自動で変える（hyb_send -a）
+        'R': ('hyb', ('172.21.0.10:%d@5 172.27.0.40:%d@5 172.27.0.40:%d@5 '
+                      '172.24.0.20:%d@5 172.24.0.20:%d@5 172.28.0.50:%d@5')
+              % (port, port + 1, port + 2, port + 3, port + 4, port + 5), '1456', ''),
     }
     if any(case not in definitions for case in cases):
-        raise ValueError('suite cases: A B C D H E')
+        raise ValueError('suite cases: A B C D H E R')
+    if 'R' in cases and port > 65530:
+        raise ValueError('PORT must be <= 65530 for R')
     # ARP解決を転送開始前に済ませる。回線設定は変更しない。
     for node, ip in [('node3', '172.21.0.10'), ('node3', '172.27.0.40'), ('node4', '172.29.0.50'),
                      ('node5', '172.23.0.10'), ('node4', '172.22.0.10'),
-                     ('node3', '172.24.0.20'), ('node2', '172.26.0.50')]:
+                     ('node3', '172.24.0.20'), ('node2', '172.26.0.50'),
+                     ('node3', '172.28.0.50'), ('node2', '172.20.0.10')]:
         if docker(node, 'ping', '-c', 1, '-W', 2, ip).returncode:
             raise RuntimeError('warmup ping failed: ' + node + ' -> ' + ip)
     rows = []
     for case in cases:
         mode, dest, param, relay_buf = definitions[case]
         relays, commands = [], []
-        if case in ('B', 'D', 'H', 'E'):
+        if case in ('B', 'D', 'H', 'E', 'R'):
             binary = 'tcp_relay.out' if mode == 'tcp' else 'udp_relay.out'
             options = ['-b', relay_buf] if mode == 'tcp' else []
             commands = [('node5', options + [port, '172.23.0.10', port]),
                         ('node4', options + [port, '172.29.0.50', port])]
             if case == 'E':
                 commands += [('node4', [port + 2, '172.22.0.10', port]), ('node2', [port, '172.26.0.50', port])]
+            if case == 'R':
+                commands = [('node5', [port + 5, '172.23.0.10', port]),     # 5→1（3つの経路で共用）
+                            ('node4', [port + 1, '172.22.0.10', port]),     # 3→4→1
+                            ('node4', [port + 2, '172.29.0.50', port + 5]),  # 3→4→5→1
+                            ('node2', [port + 3, '172.20.0.10', port]),     # 3→2→1
+                            ('node2', [port + 4, '172.26.0.50', port + 5])]  # 3→2→5→1
         try:
             for index, (node, args) in enumerate(commands):
                 job = Job(node, [REMOTE + '/' + binary] + args,
                           directory / ('%s-relay-%d.log' % (case, index)), (timeout + 20) * repeat + 60)
                 relays.append(job)
                 job.ready('tcp relay:' if mode == 'tcp' else 'udp relay:')
-            rows += run_condition(mode, dest, [param], directory, csv_path, case, relay_buf)
+            rows += run_condition(mode, dest, [param], directory, csv_path, case, relay_buf,
+                                  ['-a'] if case == 'R' else [])
         finally:
             for job in reversed(relays):
                 job.close()
@@ -281,8 +335,9 @@ def main(args):
     if not args or args[0] not in ('tcp', 'hyb', 'suite') or (args[0] != 'suite' and len(args) < 3):
         print('Usage: ./bench.sh tcp DEST BUF_LEN [BUF_LEN ...]\n'
               '       ./bench.sh hyb "IP:PORT@Mbps ..." CHUNK [CHUNK ...]\n'
-              '       ./bench.sh suite [A B C D H E]\n'
-              'Env: FILE, REPEAT, PORT, TIMEOUT, CSV, LABEL, MIN_SECONDS, SEND_OPTS, RECV_OPTS')
+              '       ./bench.sh suite [A B C D H E R]\n'
+              'Env: FILE, REPEAT, PORT, TIMEOUT, CSV, LABEL, MIN_SECONDS, SEND_OPTS, RECV_OPTS,\n'
+              '     NET_CHANGE=秒:N（送信開始からその秒数で回線設定を tcN に変え、終了後 tc2 に戻す）')
         return 2
     directory = HERE / 'results' / (datetime.now().strftime('%Y%m%d-%H%M%S-') + uuid.uuid4().hex[:8])
     directory.mkdir(parents=True)

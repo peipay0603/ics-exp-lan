@@ -1,4 +1,5 @@
 """Linuxコンテナ内で実行する、実際のソケットを使った回帰テスト（Python 3.6対応）。"""
+import collections
 import os
 from pathlib import Path
 import select
@@ -64,6 +65,49 @@ class UDPProxy:
         self.stopped.set()
         self.worker.join(1)
         self.sock.close()
+
+
+class SlowProxy:
+    """指定した速さ[Mbps]でしか先へ送らない中継。帯域の狭い経路の代わり。超えた分は待たせる。"""
+    def __init__(self, target, mbps):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind(('127.0.0.1', 0))
+        self.sock.settimeout(0.002)
+        self.port = self.sock.getsockname()[1]
+        self.target = ('127.0.0.1', target)
+        self.mbps = mbps
+        self.queue = collections.deque()
+        self.stopped = threading.Event()
+        self.worker = threading.Thread(target=self.run)
+        self.worker.start()
+
+    def run(self):
+        ready = time.monotonic()
+        while not self.stopped.is_set():
+            try:
+                self.queue.append(self.sock.recvfrom(65536)[0])
+            except socket.timeout:
+                pass
+            now = time.monotonic()
+            while self.queue and now >= ready:
+                data = self.queue.popleft()
+                self.sock.sendto(data, self.target)
+                ready = max(ready, now - 0.002) + (len(data) + 42) * 8 / (self.mbps * 1e6)
+
+    def close(self):
+        self.stopped.set()
+        self.worker.join(1)
+        self.sock.close()
+
+
+def path_lines(log):
+    """hyb_send の Path 行を {番号: {sent, resent_elsewhere, ...}} にする。"""
+    paths = {}
+    for line in log.splitlines():
+        if line.startswith('Path '):
+            number = int(line.split()[1].rstrip(':'))
+            paths[number] = dict(item.split('=', 1) for item in line.split() if '=' in item)
+    return paths
 
 
 class TransferTests(unittest.TestCase):
@@ -366,6 +410,65 @@ class TransferTests(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0, receiver.decode())
         self.assertEqual(output.read_bytes(), b'previous complete file')
         self.assertFalse(list(self.directory.glob('*.part.*')))
+
+    def test_adaptive_two_relays_reports_and_partial_chunk(self):
+        target, first, second = free_port(), free_port(), free_port()
+        self.launch('udp_relay', second, '127.0.0.1', target)
+        self.launch('udp_relay', first, '127.0.0.1', second)
+        for size in (0, 1, 1457, 2097169):
+            with self.subTest(size=size):
+                source = self.source(size)
+                output = self.directory / 'received.dat'
+                r = self.launch('hyb_recv', target, output)
+                log = self.send('hyb_send', '-a', '127.0.0.1', target, source,
+                                '127.0.0.1:%d@10' % target, '127.0.0.1:%d@10' % first)
+                receiver = self.receive(r, source, output)
+                self.assertIn('adaptive=1', log)
+                self.assertIn('adaptive=1', receiver)
+                self.assertEqual(len(path_lines(log)), 2)
+
+    def test_adaptive_pauses_dead_path_and_resends_elsewhere(self):
+        target = free_port()
+        source = self.source(8 * 1024 * 1024 + 17)
+        output = self.directory / 'received.dat'
+        r = self.launch('hyb_recv', target, output)
+        proxy = UDPProxy(target, discard_all=True)
+        self.proxies.append(proxy)
+        log = self.send('hyb_send', '-a', '127.0.0.1', target, source,
+                        '127.0.0.1:%d@10' % target, '127.0.0.1:%d@10' % proxy.port)
+        self.receive(r, source, output)
+        self.assertIn('一時停止', log)
+        paths = path_lines(log)
+        self.assertGreater(int(paths[1]['resent_elsewhere']), 0)
+        self.assertGreater(int(paths[0]['sent']), 4 * int(paths[1]['sent']))
+
+    def test_adaptive_sends_little_on_a_slow_path(self):
+        target = free_port()
+        source = self.source(8 * 1024 * 1024)
+        output = self.directory / 'received.dat'
+        r = self.launch('hyb_recv', target, output)
+        slow = SlowProxy(target, 2)
+        self.proxies.append(slow)
+        log = self.send('hyb_send', '-a', '127.0.0.1', target, source,
+                        '127.0.0.1:%d@10' % slow.port, '127.0.0.1:%d@10' % target)
+        self.receive(r, source, output)
+        paths = path_lines(log)
+        slow_sent, fast_sent = int(paths[0]['sent']), int(paths[1]['sent'])
+        self.assertLess(slow_sent, 0.15 * (slow_sent + fast_sent), log)
+
+    def test_adaptive_recovers_loss_reordering_duplicates_and_stale_session(self):
+        target = free_port()
+        source = self.source(1048593)
+        output = self.directory / 'received.dat'
+        r = self.launch('hyb_recv', '-w', 30, target, output)
+        proxy = UDPProxy(target)
+        self.proxies.append(proxy)
+        self.send('hyb_send', '-a', '127.0.0.1', target, source, '127.0.0.1:%d@20' % proxy.port)
+        receiver = self.receive(r, source, output)
+        self.assertGreater(len(proxy.dropped), 0)
+        result = dict(item.split('=', 1) for item in receiver.splitlines()[-1].split()[1:])
+        self.assertGreater(int(result['dup']), 0)
+        self.assertEqual(result['adaptive'], '1')
 
     def test_invalid_rate_and_overflow_are_rejected(self):
         source = self.source(1)

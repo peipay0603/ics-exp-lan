@@ -74,6 +74,30 @@ _Static_assert(sizeof(struct tcp_hdr) == 32, "tcp_hdr must be 32 bytes");
    tcのtbfはEthernetヘッダ込みの長さで帯域を数えるので、送信レートもこれで計算する */
 #define HYB_WIRE_OVERHEAD   (HYB_DGRAM_HDR + 8 + 20 + 14)
 
+/*-------------------------- 経路の状況に合わせる版（hyb_send -a） --*/
+/* データグラム = [session 4B][seq 4B][経路番号 1B + 経路内の通し番号 3B][送信時刻 µs 4B][データ]
+   先頭8バイトは通常版と同じ。受信側は経路ごとに、届いた数・抜けた番号・遅れの増え方を測り、
+   0.1秒ごとに MSG_STATS で送信側へ返す。送信側はそれを見て経路ごとの送信レートを変える。 */
+#define HYB_MAGIC_ADAPTIVE  0x45364841u     /* "E6HA" */
+#define HYB_ADAPT_HDR       16
+#define HYB_ADAPT_CHUNK     (1500 - 20 - 8 - HYB_ADAPT_HDR)   /* 1456 */
+#define HYB_MAX_PATHS       16
+#define HYB_REPORT_MS       100             /* 受信状況を返す間隔 */
+
+/* MSG_STATS の後ろに count 個続く。値はすべてネットワークバイトオーダ */
+#define HYB_NO_SAMPLE       INT32_MIN
+struct hyb_pstat {
+    uint32_t path;          /* 経路番号（hyb_send に書いた宛先の順、0から）       */
+    uint32_t received;      /* この経路で受け取ったデータグラム数（累計）         */
+    uint32_t passed;        /* この経路の通し番号の最大+1。ここまでは届いたか落ちた */
+    int32_t  owd_us;        /* この0.1秒間の最小の片道遅延。この経路の最初の値との差。
+                               送信側はこの最小値の変化で待ち行列の長さを見る。
+                               標本がなければ HYB_NO_SAMPLE                        */
+    uint32_t span_us;       /* この0.1秒間に、最初と最後のデータグラムが届いた時刻の差 */
+    uint32_t reserved;
+};
+_Static_assert(sizeof(struct hyb_pstat) == 24, "hyb_pstat must be 24 bytes");
+
 /* 送信側 → 受信側（TCP）: 最初に1回送る */
 struct hyb_hello {
     uint32_t magic;
@@ -91,7 +115,9 @@ enum {
     MSG_READY     = 1,      /* 受信側→送信側: UDPを受け取る準備ができた        */
     MSG_ROUND_END = 2,      /* 送信側→受信側: この回の送信を終えた count=送信数 */
     MSG_NACK      = 3,      /* 受信側→送信側: 未着範囲 count個（後ろに続く）  */
-    MSG_DONE      = 4       /* 受信側→送信側: 全チャンクを受け取り保存した    */
+    MSG_DONE      = 4,      /* 受信側→送信側: 全チャンクを受け取り保存した    */
+    MSG_STATS     = 5       /* 受信側→送信側: 経路ごとの受信状況（-a のときだけ）
+                               count=経路数、reserved=集計した時間[µs]          */
 };
 
 struct hyb_msg {
