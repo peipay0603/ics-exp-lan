@@ -2,6 +2,14 @@
 
 検証日: 2026-11-16
 
+## 追加検証：配布Ubuntu Docker
+
+Python 3.6.9で`python3 -m unittest -v test_routebench`を実行し、8件すべて成功しました。さらに`lab_control.py`のstart/status/stopを実コンテナで確認し、tc2の帯域・遅延を照合したうえで事前校正8試行と20MiBの全8ケース各3回（24試行）を実行しました。全件ハッシュ一致です。
+
+[生CSV・重み・環境・コードハッシュを伴う再測定](reports/20261116-recheck/README.md)を参照してください。以下は最初のWindows検証時点の記録です。
+
+## 最初のWindows検証
+
 WindowsのPython 3.14.5上で、127.0.0.1だけを使った実TCP通信により確認しました。実験室のDocker環境や帯域・遅延設定は再現していません。
 
 `python -X utf8 -m unittest -v test_routebench` は8テストすべて成功しました。

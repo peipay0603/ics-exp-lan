@@ -35,6 +35,8 @@ make cleanall
 
 すべてのコンテナは`/home/ubuntu/share`にホストの`./share`をマウントしているので、ファイルの共有にはここを使って下さい
 
+Cの実行ファイル（`*.out`）は各Ubuntu環境でビルドします。ARM64とx86-64では生成物が異なるためGitに含めません。以前のチェックアウトの実行ファイルが残っている場合は、最初に`make -B`で作り直してください。
+
 ## パスワード
 ubuntuユーザー、rootユーザーのパスワードはともに`lanexp`です
 
@@ -70,4 +72,11 @@ exit # もしくは Ctrl+D
 - [直通を含む1〜4経路の比較プログラムと実行手順](share/route_compare/README.md)
 - [20MiB予備測定の結果と考察](share/route_compare/reports/START2_SCREEN_RESULTS.md)
 
-比較用プログラムは既存の転送実装と独立して利用できます。測定用の大容量ファイルや実行時ログはGit管理対象から除外しています。
+比較用プログラムは既存の転送実装と独立して利用できます。大容量の転送データはGit対象外とし、共有する測定のCSV・環境記録・生ログは`reports`等へ保存します。
+
+## 最終課題のTCP版と比較測定
+
+- [多段中継・4経路TCP版とPDFのA〜Eを測る手順](share/route/README.md)
+- [TCP/UDP併用版の手順と検証](share/Source/Lab/exp6/README.md)
+
+`route`はPDFの69Mbps構成を使うC版、`route_compare`は最大22Mbpsの経路数比較用Python版です。それぞれの結果を区別してください。新しいC版の測定では、再生成できる転送データを除き、CSV・環境記録・生ログを保存します。

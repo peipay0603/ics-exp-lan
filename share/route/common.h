@@ -21,6 +21,10 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <limits.h>
+#include <math.h>
+#include <poll.h>
+#include <sys/time.h>
 
 #define SERVER_PORT     10000       /* ファイルサーバの待ち受けポート */
 #define RELAY_PORT_BASE 20000       /* 経路 k の中継は 20000+k で待ち受ける */
@@ -42,6 +46,7 @@ static inline int write_all(int fd, const void *buf, size_t n)
             if (errno == EINTR) continue;
             return -1;
         }
+        if (m == 0) { errno = EIO; return -1; }
         p += m;
         n -= (size_t)m;
     }
@@ -74,11 +79,38 @@ static inline int read_line(int fd, char *line, size_t max)
         ssize_t m = read(fd, &c, 1);
         if (m < 0 && errno == EINTR) continue;
         if (m <= 0) return -1;
-        if (c == '\n') break;
+        if (c == '\n') { line[i] = '\0'; return 0; }
         if (c != '\r') line[i++] = c;
     }
     line[i] = '\0';
-    return 0;
+    errno = EMSGSIZE;
+    return -1;
+}
+
+/* connect の待ち時間も有限にする（SO_RCVTIMEO だけでは connect を制限できない） */
+static inline int connect_timeout(int fd, const struct sockaddr_in *addr, int seconds)
+{
+    int flags = fcntl(fd, F_GETFL, 0), error = 0;
+    socklen_t length = sizeof(error);
+    struct pollfd pfd = { fd, POLLOUT, 0 };
+    if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) return -1;
+    if (connect(fd, (const struct sockaddr *)addr, sizeof(*addr)) < 0) {
+        if (errno != EINPROGRESS) return -1;
+        int n;
+        do { n = poll(&pfd, 1, seconds * 1000); } while (n < 0 && errno == EINTR);
+        if (n <= 0) { if (n == 0) errno = ETIMEDOUT; return -1; }
+        if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &length) < 0) return -1;
+        if (error) { errno = error; return -1; }
+    }
+    return fcntl(fd, F_SETFL, flags);
+}
+
+static inline int valid_port(const char *text)
+{
+    char *end;
+    errno = 0;
+    long value = strtol(text, &end, 10);
+    return errno || end == text || *end || value < 1 || value > 65535 ? -1 : (int)value;
 }
 
 #endif

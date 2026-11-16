@@ -1,0 +1,9 @@
+gcc -g -Wall -DDEBUG tcp_echo_server.c -o tcp_echo_server.out -lm -lrt
+gcc -g -Wall -DDEBUG tcp_echo_client.c -o tcp_echo_client.out -lm -lrt
+gcc -g -Wall -DDEBUG udp_echo_server.c -o udp_echo_server.out -lm -lrt
+gcc -g -Wall -DDEBUG udp_echo_client.c -o udp_echo_client.out -lm -lrt
+gcc -g -Wall -DDEBUG tcp_file_server.c -o tcp_file_server.out -lm -lrt
+gcc -g -Wall -DDEBUG tcp_file_client.c -o tcp_file_client.out -lm -lrt
+gcc -g -Wall -DDEBUG udp_echo_client_ep.c -o udp_echo_client_ep.out -lm -lrt
+gcc -g -Wall -DDEBUG sample_clock_gettime.c -o sample_clock_gettime.out -lm -lrt
+gcc -g -Wall -DDEBUG sample_epoll.c -o sample_epoll.out -lm -lrt

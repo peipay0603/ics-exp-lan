@@ -1,0 +1,20 @@
+test_hybrid_empty_and_partial_chunk (test_transfer.TransferTests) ... ok
+test_hybrid_recovers_loss_reordering_duplicates_and_stale_session (test_transfer.TransferTests) ... ok
+test_hybrid_save_failure_is_not_reported_as_done (test_transfer.TransferTests) ... ok
+test_hybrid_stops_at_retry_limit (test_transfer.TransferTests) ... ok
+test_hybrid_two_relays_and_weighted_paths (test_transfer.TransferTests) ... ok
+test_invalid_rate_and_overflow_are_rejected (test_transfer.TransferTests) ... ok
+test_tcp_atomic_replacement_and_legacy_mode (test_transfer.TransferTests) ... ok
+test_tcp_incomplete_transfer_is_an_error (test_transfer.TransferTests) ... ok
+test_tcp_receipt_timeout (test_transfer.TransferTests) ... ok
+test_tcp_receipts_are_required_and_validated (test_transfer.TransferTests) ... ok
+test_tcp_relay_recovers_after_idle_connection (test_transfer.TransferTests) ... ok
+test_tcp_relay_survives_unavailable_destination (test_transfer.TransferTests) ... ok
+test_tcp_save_failure_is_reported_to_sender (test_transfer.TransferTests) ... ok
+test_tcp_sender_rejects_peer_that_discards_the_file (test_transfer.TransferTests) ... ok
+test_tcp_two_relays_repeated_and_unaligned (test_transfer.TransferTests) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 2.713s
+
+OK

@@ -1,0 +1,31 @@
+{
+  "started_at": "2026-11-16T13:41:11.691342+09:00",
+  "argv": [
+    "share/route/bench.py",
+    "--file",
+    "share/Source/Lab/exp6/test16M.dat",
+    "--out",
+    "share/route/results/20261116-smoke",
+    "--cases",
+    "A,B,C,D,E",
+    "--repeats",
+    "1",
+    "--min-seconds",
+    "0",
+    "--timeout",
+    "120"
+  ],
+  "source": "Source/Lab/exp6/test16M.dat",
+  "bytes": 16777216,
+  "source_sha256": "abe611dea3c81622b798ee79b9023616f88bafe319a56f830fcd99f26adc618f",
+  "timing": "client process start through save and exit; excludes hash checking",
+  "cases": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E"
+  ],
+  "repeats": 1,
+  "min_seconds": 0.0
+}

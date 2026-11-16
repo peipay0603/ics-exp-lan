@@ -39,28 +39,33 @@ static void serve(int sock, const char *filename)
 
     if (fd < 0 || fstat(fd, &st) < 0) {
         perror("open");
+        if (fd >= 0) close(fd);
         return;
     }
 
     while (read_line(sock, line, sizeof(line)) == 0) {
         long long off, len;
+        char extra;
         if (strcmp(line, "SIZE") == 0) {
             char reply[64];
             int n = snprintf(reply, sizeof(reply), "SIZE %lld\n", (long long)st.st_size);
             if (write_all(sock, reply, n) < 0) break;
-        } else if (sscanf(line, "GET %lld %lld", &off, &len) == 2) {
-            if (off < 0 || len < 0 || off + len > st.st_size) {
+        } else if (sscanf(line, "GET %lld %lld %c", &off, &len, &extra) == 2) {
+            if (off < 0 || len < 0 || off > st.st_size || len > st.st_size - off) {
                 fprintf(stderr, "bad range: %s\n", line);
                 break;
             }
             if (send_range(sock, fd, off, (size_t)len) < 0) break;
             served += len;
             nreq++;
-        } else {
+        } else if (strcmp(line, "GET") == 0) {
             /* 範囲指定なし：ファイル全体を送って終了（4-1 の方式） */
             if (send_range(sock, fd, 0, (size_t)st.st_size) == 0)
                 served += st.st_size;
             nreq++;
+            break;
+        } else {
+            fprintf(stderr, "bad request\n");
             break;
         }
     }
@@ -80,7 +85,8 @@ int main(int argc, char **argv)
         fprintf(stderr, "Usage: %s filename [port]\n", argv[0]);
         return 1;
     }
-    if (argc > 2) port = atoi(argv[2]);
+    if (argc > 2) port = valid_port(argv[2]);
+    if (port < 0) { fprintf(stderr, "bad port\n"); return 1; }
     if (access(argv[1], R_OK) != 0) {
         perror(argv[1]);
         return 1;
@@ -90,6 +96,7 @@ int main(int argc, char **argv)
     signal(SIGCHLD, SIG_IGN);               /* 子プロセスを自動回収 */
 
     sock0 = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock0 < 0) { perror("socket"); return 1; }
     setsockopt(sock0, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
@@ -117,7 +124,9 @@ int main(int argc, char **argv)
         printf("accept from %s:%d\n", inet_ntoa(peer.sin_addr), ntohs(peer.sin_port));
         fflush(stdout);
         setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
-        if (fork() == 0) {
+        pid_t child = fork();
+        if (child < 0) perror("fork");
+        if (child == 0) {
             close(sock0);
             serve(sock, argv[1]);
             close(sock);

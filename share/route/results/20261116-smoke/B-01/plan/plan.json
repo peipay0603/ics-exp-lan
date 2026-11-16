@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "source": 3,
+  "destination": 1,
+  "services": {
+    "3": [
+      {
+        "command": [
+          "../Source/Lab/exp43/fserver.out",
+          "/home/ubuntu/share/Source/Lab/exp6/test16M.dat",
+          "31000"
+        ],
+        "ready": "waiting connection"
+      }
+    ],
+    "4": [
+      {
+        "command": [
+          "relay.out",
+          "31101",
+          "172.27.0.30",
+          "31000"
+        ],
+        "ready": "relay:"
+      }
+    ],
+    "5": [
+      {
+        "command": [
+          "relay.out",
+          "31101",
+          "172.29.0.40",
+          "31101"
+        ],
+        "ready": "relay:"
+      }
+    ]
+  },
+  "client": [
+    "./fclient.out",
+    "-o",
+    "/home/ubuntu/share/route/results/20261116-smoke/B-01/received-6708ddfc5a824fb2a2f13ddc2f0b5746.dat",
+    "-c",
+    "256",
+    "-d",
+    "4",
+    "-m",
+    "5.0",
+    "172.23.0.50:31101@50=3-4-5-1"
+  ],
+  "chosen": [
+    [
+      [
+        3,
+        4,
+        5,
+        1
+      ],
+      50.0
+    ]
+  ],
+  "standby": [],
+  "nominal_mbps": 50.0,
+  "benchmark_client": [
+    "/home/ubuntu/share/route/../Source/Lab/exp43/fclient.out",
+    "172.23.0.50",
+    "31101",
+    "/home/ubuntu/share/route/results/20261116-smoke/B-01/received-6708ddfc5a824fb2a2f13ddc2f0b5746.dat"
+  ]
+}

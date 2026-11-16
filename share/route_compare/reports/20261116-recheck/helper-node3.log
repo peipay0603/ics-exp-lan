@@ -1,0 +1,1 @@
+READY {"role": "source", "port": 19000, "file": "/home/ubuntu/share/route_compare/route_test.dat", "upstream": null, "block_size": 1000}

@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Ubuntu: build route programs",
+      "type": "process",
+      "command": "docker",
+      "args": ["exec", "node1", "make", "-C", "/home/ubuntu/share/route", "CFLAGS=-O2 -Wall -Wextra -Werror"],
+      "group": {"kind": "build", "isDefault": true},
+      "problemMatcher": {"base": "$gcc", "fileLocation": ["relative", "${workspaceFolder}/share/route"]}
+    },
+    {
+      "label": "Ubuntu: test route programs",
+      "type": "process",
+      "command": "docker",
+      "args": ["exec", "node1", "make", "-C", "/home/ubuntu/share/route", "test"],
+      "group": "test",
+      "problemMatcher": []
+    }
+  ]
+}

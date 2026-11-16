@@ -1,0 +1,10 @@
+=== per path ===
+3-1       172.21.0.30:31000    chunks=3600 (100.0%)   9.56 Mbps  used 789.8s  +0/-0  probes=0 dup=0 wasted=0
+=== result ===
+File            : /home/ubuntu/share/route/results/20261116-final900/C-01/received-3df576ef7c6f45f4886b8313a3a2c39a.dat
+Total bytes     : 943718400 (943.72 MB)
+Received on wire: 943718400 (duplicates 0)
+Chunk size      : 256 KiB x 3600 chunks, depth 4, 1 paths / 1 connections, static (-S)
+Download time   : 789.793 sec
+Throughput      : 9.559 Mbps
+ROUTE_METRICS {"seconds": 789.7973804849898, "exit": 0, "user_s": 0.8787419999999999, "system_s": 12.524346}

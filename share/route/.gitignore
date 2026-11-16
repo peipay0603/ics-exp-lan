@@ -1,0 +1,4 @@
+*.out
+*.dat
+*.part.*
+__pycache__/

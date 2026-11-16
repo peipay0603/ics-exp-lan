@@ -1,3 +1,5 @@
 # Measurement archives keep original padding and line endings.
 share/results/** -whitespace
 share/Source/Lab/exp6/results/** -whitespace
+# Python csvの生記録はCRLFを維持する。
+share/route_compare/reports/20261116-recheck/**/*.csv -text whitespace=cr-at-eol

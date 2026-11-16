@@ -1,0 +1,2 @@
+relay: listen 31104 -> 172.26.0.20:31104
+[relay 2340] down 135571903 bytes, up 11337 bytes, 113.433 sec

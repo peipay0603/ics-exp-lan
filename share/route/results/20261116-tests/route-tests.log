@@ -1,0 +1,30 @@
+python3 -m unittest -v test_transfer test_routeplan test_bench
+test_adaptive_standby_promotion (test_transfer.TransferTests) ... ok
+test_broken_path_returns_work_to_healthy_path (test_transfer.TransferTests) ... ok
+test_direct_and_two_relays_reassemble (test_transfer.TransferTests) ... ok
+test_disk_write_failure_preserves_previous_output (test_transfer.TransferTests) ... ok
+test_empty_file (test_transfer.TransferTests) ... ok
+test_failed_connection_keeps_healthy_connection_on_same_path (test_transfer.TransferTests) ... ok
+test_first_path_unreachable_falls_back (test_transfer.TransferTests) ... ok
+test_invalid_options_and_path_ports (test_transfer.TransferTests) ... ok
+test_negative_metadata_is_rejected (test_transfer.TransferTests) ... ok
+test_partial_disconnect_stops_and_preserves_previous_output (test_transfer.TransferTests) ... ok
+test_partial_pwrite_and_eintr_are_retried (test_transfer.TransferTests) ... ok
+test_publish_failure_leaves_existing_directory (test_transfer.TransferTests) ... ok
+test_server_rejects_overflow_and_invalid_commands (test_transfer.TransferTests) ... ok
+test_signal_cleans_up_without_publishing_partial_file (test_transfer.TransferTests) ... ok
+test_silent_data_peer_has_finite_retries (test_transfer.TransferTests) ... ok
+test_silent_metadata_does_not_truncate_output (test_transfer.TransferTests) ... ok
+test_generated_client_forwards_extra_arguments (test_routeplan.PlanTests) ... ok
+test_generated_scripts_preserve_spaces_and_shell_characters (test_routeplan.PlanTests) ... [{"pid": 7911, "identity": {"start": "24938365", "group": 7911, "command": ["/home/ubuntu/share/route/fserver.out", "/tmp/route-plan-o24ld0ox/source ' $(touch SHOULD_NOT_EXIST)", "37239"]}, "log": "/tmp/route-plan-o24ld0ox/nested directory/plan/logs/node3-0.log"}]
+ok
+test_maxflow_and_single_route (test_routeplan.PlanTests) ... ok
+test_stopping_a_plan_keeps_other_same_named_service_running (test_routeplan.PlanTests) ... ok
+test_failed_or_too_short_trials_do_not_enter_summary (test_bench.BenchmarkTests) ... ok
+test_metrics_reject_failure_missing_duplicate_and_nan (test_bench.BenchmarkTests) ... ok
+test_mixed_sizes_are_rejected (test_bench.BenchmarkTests) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 16.523s
+
+OK

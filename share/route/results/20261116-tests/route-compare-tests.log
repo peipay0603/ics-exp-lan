@@ -1,0 +1,14 @@
+test_ranges_have_no_gaps_overlaps_or_empty_active_paths (test_routebench.AllocationAndSelectionTests) ... ok
+test_selection_uses_complete_trials_at_equal_file_size (test_routebench.AllocationAndSelectionTests) ... ok
+test_all_eight_cases_reassemble_the_real_file (test_routebench.FileTransferTests) ... ok
+test_bad_hash_is_rejected_and_failure_is_logged (test_routebench.FileTransferTests) ... D: FAILED: SHA-256 range verification failed on direct
+ok
+test_calibration_screen_refinement_and_final_selection_cli (test_routebench.FileTransferTests) ... ok
+test_prefix_transfer_and_range_validation (test_routebench.FileTransferTests) ... ok
+test_protocol_status_and_graceful_stop (test_routebench.FileTransferTests) ... ok
+test_shared_source_cannot_be_truncated_by_the_client (test_routebench.FileTransferTests) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.262s
+
+OK
