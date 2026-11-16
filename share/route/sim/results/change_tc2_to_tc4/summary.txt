@@ -1,0 +1,5 @@
+file 100 MiB, plan from tc2, network changes to tc4 at t=5s (bandwidth only)
+D_static_single        67.16 s    12.48 Mbps  md5 OK
+G_adaptive_single      13.51 s    62.09 Mbps  md5 OK
+E_static_multi         13.38 s    62.67 Mbps  md5 OK
+F_adaptive_multi       13.15 s    63.78 Mbps  md5 OK

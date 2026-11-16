@@ -1,0 +1,9 @@
+# tc2 → tc3（5 秒後）の繰り返し（LIMIT=40）．1 回目は summary.txt
+run2  D_static_single      timeout (> 40 s)
+run2  G_adaptive_single      14.27 s    58.76 Mbps  md5 OK
+run2  E_static_multi         30.69 s    27.33 Mbps  md5 OK
+run2  F_adaptive_multi       13.89 s    60.41 Mbps  md5 OK
+run3  D_static_single      timeout (> 40 s)
+run3  G_adaptive_single      14.46 s    58.01 Mbps  md5 OK
+run3  E_static_multi         30.25 s    27.72 Mbps  md5 OK
+run3  F_adaptive_multi       14.36 s    58.41 Mbps  md5 OK

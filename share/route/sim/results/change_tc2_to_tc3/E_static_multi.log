@@ -1,0 +1,14 @@
+=== E_static_multi: ./fclient.out -o received.dat -c 256 -d 4 -m 5 -s 172.20.0.20:20005=3-2-1 -s 172.23.0.50:20006=3-5-1 -s 172.22.0.40:20007=3-2-4-1 -s 172.20.0.20:20008=3-4-2-1 -s 172.20.0.20:20009=3-5-2-1 -s 172.22.0.40:20010=3-5-4-1 172.23.0.50:20001@40=3-4-5-1 172.21.0.30:10000@10=3-1 172.22.0.40:20003@10=3-4-1 172.23.0.50:20004@9=3-2-5-1 -S
+[network changed to tc3 at about 5s]
+=== per path ===
+3-4-5-1   172.23.0.50:20001    chunks=  96 ( 24.0%)   6.65 Mbps  used  30.3s  +0/-0  probes=0 dup=0 wasted=0
+3-1       172.21.0.30:10000    chunks= 138 ( 34.5%)   9.55 Mbps  used  30.3s  +0/-0  probes=0 dup=4 wasted=0
+3-4-1     172.22.0.40:20003    chunks= 137 ( 34.2%)   9.48 Mbps  used  30.3s  +0/-0  probes=0 dup=4 wasted=0
+3-2-5-1   172.23.0.50:20004    chunks=  29 (  7.2%)   2.01 Mbps  used  30.3s  +0/-0  probes=0 dup=0 wasted=0
+=== result ===
+File            : received.dat
+Total bytes     : 104857600 (104.86 MB)
+Received on wire: 104857600 (duplicates 0)
+Chunk size      : 256 KiB x 400 chunks, depth 4, 4 paths / 4 connections, static (-S)
+Download time   : 30.296 sec
+Throughput      : 27.689 Mbps
