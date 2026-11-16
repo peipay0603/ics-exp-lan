@@ -1,0 +1,9 @@
+case,path_count,paths,allocation,successful_trials,failed_trials,total_bytes,median_sec,min_sec,max_sec,goodput_mbps
+D,1,direct,weighted,3,0,20971520,17.5513,17.5492,17.5534,9.5590
+D2,2,"direct,via2",weighted,3,0,20971520,16.0259,15.9867,16.0327,10.4688
+D4,2,"direct,via4",weighted,3,0,20971520,8.9616,8.9601,8.9681,18.7211
+D5,2,"direct,via5",weighted,3,0,20971520,15.9575,15.9556,15.9585,10.5137
+D24,3,"direct,via2,via4",weighted,3,0,20971520,8.5239,8.5232,8.5673,19.6825
+D25,3,"direct,via2,via5",weighted,3,0,20971520,14.6562,14.6508,14.6904,11.4472
+D45,3,"direct,via4,via5",weighted,3,0,20971520,8.5276,8.5259,8.5277,19.6741
+D245,4,"direct,via2,via4,via5",weighted,3,0,20971520,8.1313,8.1312,8.1705,20.6329
