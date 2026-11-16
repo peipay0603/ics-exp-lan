@@ -212,7 +212,7 @@ def write_scripts(outdir, src, dst, chosen, standby, args, delay, maxcap):
         if str(node) in services:
             body += 'python3 services.py start "$plan_dir/plan.json" --node %d\n' % node
         if node == dst:
-            body += 'time -p ' + cmd + '\n'
+            body += 'time -p ' + cmd + ' "$@"\n'
         per_node[node] = body
         fn = os.path.join(outdir, "node%d.sh" % node)
         with open(fn, "w") as stream:

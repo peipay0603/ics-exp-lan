@@ -80,6 +80,16 @@ class PlanTests(unittest.TestCase):
         self.assertTrue(services.owned(records[0]))
         state.write_text(json.dumps(records))
 
+    def test_generated_client_forwards_extra_arguments(self):
+        # 実ネットワークへ接続せず、生成スクリプトから実クライアントへ-hを渡す。
+        # 引数が渡ればusageで即終了し、接続待ちには入らない。
+        out = self.plan('client', ['--path', '3-1', '--standby-hops', '0'])
+        result = subprocess.run(['bash', str(out / 'node1.sh'), '-h'], stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, timeout=3)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b'Usage:', result.stdout)
+        self.assertNotIn(b'connect ', result.stdout)
+
 
 if __name__ == '__main__':
     unittest.main()
