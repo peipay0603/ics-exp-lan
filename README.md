@@ -64,3 +64,10 @@ exit # もしくは Ctrl+D
   - 例外としてコンテナの`/home/ubuntu/share`の中は削除されずにホストの`./share`に残るので、心配ならここを中心に作業して下さい
 - **`make cleanall`するとDocker上のほぼすべてのデータが削除されるので要注意！**
   - これは実験用PCを掃除するために使うコマンドです。指示のない限りは実行しないこと
+
+## 経路数の比較（2巡目）
+
+- [直通を含む1〜4経路の比較プログラムと実行手順](share/route_compare/README.md)
+- [20MiB予備測定の結果と考察](share/route_compare/reports/START2_SCREEN_RESULTS.md)
+
+比較用プログラムは既存の転送実装と独立して利用できます。測定用の大容量ファイルや実行時ログはGit管理対象から除外しています。
